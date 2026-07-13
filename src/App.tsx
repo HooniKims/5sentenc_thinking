@@ -228,8 +228,6 @@ export function App() {
       return;
     }
 
-    helpRequestId.current += 1;
-    setHelpView({ kind: "idle" });
     setSentences((current) => replaceSentence(current, index, value.trim()));
   }
 

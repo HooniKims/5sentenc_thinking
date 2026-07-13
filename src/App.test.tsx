@@ -321,7 +321,7 @@ describe("학생 활동 시작 화면", () => {
     );
   });
 
-  it("확정 문장을 고치면 이전 도움 요청의 늦은 응답을 무시한다", async () => {
+  it("확정 문장을 고쳐도 진행 중인 도움 질문을 유지한다", async () => {
     const request = createGuidanceRequest();
     help.requestGuidanceQuestion.mockReturnValueOnce(request.promise);
     render(<App />);
@@ -339,7 +339,7 @@ describe("학생 활동 시작 화면", () => {
       await request.promise;
     });
 
-    expect(screen.queryByText("오래된 도움 질문은 보이면 안 되나요?")).not.toBeInTheDocument();
+    expect(screen.getByText("오래된 도움 질문은 보이면 안 되나요?")).toBeInTheDocument();
   });
 
   it("초안을 바꾸면 이전 도움 요청의 늦은 응답을 무시한다", async () => {

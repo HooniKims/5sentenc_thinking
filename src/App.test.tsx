@@ -197,7 +197,7 @@ describe("학생 활동 시작 화면", () => {
   });
 
   it("도움 요청은 작성 카드를 자동으로 위로 스크롤하지 않는다", () => {
-    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    const originalScrollToDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollTo");
     const originalRequestAnimationFrame = window.requestAnimationFrame;
     const scrollTo = vi.fn();
     const request = createGuidanceRequest();
@@ -215,9 +215,15 @@ describe("학생 활동 시작 화면", () => {
 
       expect(scrollTo).not.toHaveBeenCalled();
     } finally {
-      HTMLElement.prototype.scrollTo = originalScrollTo;
+      if (originalScrollToDescriptor) {
+        Object.defineProperty(HTMLElement.prototype, "scrollTo", originalScrollToDescriptor);
+      } else {
+        Reflect.deleteProperty(HTMLElement.prototype, "scrollTo");
+      }
       window.requestAnimationFrame = originalRequestAnimationFrame;
     }
+
+    expect(Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollTo")).toEqual(originalScrollToDescriptor);
   });
 
   it("디디의 검증된 질문이 도착하면 분석 안내 대신 보여 준다", async () => {

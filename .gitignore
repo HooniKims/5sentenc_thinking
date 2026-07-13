@@ -6,3 +6,5 @@ tmp/
 _workspace/
 .superpowers/
 .codegraph/
+.vercel
+.env*

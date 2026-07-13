@@ -1,5 +1,5 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth, signInAnonymously } from "firebase/auth";
+import { getAuth, signInAnonymously, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { initializeFirestore } from "firebase/firestore";
 
 const config = {
@@ -17,6 +17,24 @@ export const auth = getAuth(app);
 export const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
 
 export async function ensureStudentIdentity(): Promise<string> {
+  if (auth.currentUser && !auth.currentUser.isAnonymous) {
+    await signOut(auth);
+  }
+
   const user = auth.currentUser ?? (await signInAnonymously(auth)).user;
   return user.uid;
+}
+
+export async function getStudentIdToken(): Promise<string> {
+  await ensureStudentIdentity();
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) {
+    throw new Error("Student identity token is unavailable.");
+  }
+
+  return token;
+}
+
+export async function signInAsAdmin(email: string, password: string): Promise<void> {
+  await signInWithEmailAndPassword(auth, email, password);
 }

@@ -1,0 +1,10 @@
+{
+  "installCommand": "bun install --frozen-lockfile",
+  "buildCommand": "bun run build",
+  "rewrites": [
+    {
+      "source": "/admin",
+      "destination": "/index.html"
+    }
+  ]
+}

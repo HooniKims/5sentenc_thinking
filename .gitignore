@@ -8,3 +8,4 @@ _workspace/
 .codegraph/
 .vercel
 .env*
+.gstack/

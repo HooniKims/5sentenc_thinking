@@ -6,36 +6,101 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function anonymousStudent() {
+      return signedIn() && request.auth.token.firebase.sign_in_provider == "anonymous";
+    }
+
     function teacher() {
       return signedIn()
         && exists(/databases/$(database)/documents/teachers/$(request.auth.uid))
         && get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.active == true;
     }
 
+    function activeSession(sessionId) {
+      return exists(/databases/$(database)/documents/sessions/$(sessionId))
+        && get(/databases/$(database)/documents/sessions/$(sessionId)).data.state == "active";
+    }
+
+    function safeStudentText(value) {
+      return value is string
+        && value.size() > 0
+        && value.size() <= 280
+        && !value.matches('.*([0-9]{2,3}[- ]?[0-9]{3,4}[- ]?[0-9]{4}|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}).*')
+        && !value.matches('.*(홍길동|(?:제|내)[ ]*이름은?[ ]*[가-힣]{2,4}|[가-힣]{2,}(초등학교|중학교|고등학교|대학교)|[0-9]{1,2}학년[ ]*[0-9]{1,2}반|서울특별시|부산광역시|대구광역시|인천광역시|광주광역시|대전광역시|울산광역시|세종특별자치시|제주특별자치도|서울[ ]*[가-힣]+(구|시|군|읍|면|동)|[가-힣]{2,}(로|길)[ ]*[0-9]{1,4}).*');
+    }
+
+    function sentencesAreSafe(sentences) {
+      return sentences is list
+        && sentences.size() <= 5
+        && (sentences.size() < 1 || safeStudentText(sentences[0]))
+        && (sentences.size() < 2 || safeStudentText(sentences[1]))
+        && (sentences.size() < 3 || safeStudentText(sentences[2]))
+        && (sentences.size() < 4 || safeStudentText(sentences[3]))
+        && (sentences.size() < 5 || safeStudentText(sentences[4]));
+    }
+
+    function participantDataIsValid(participantId) {
+      return request.resource.data.keys().hasOnly(["ownerUid", "nickname", "sentences", "currentStep", "status", "updatedAt"])
+        && request.auth.uid == participantId
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == participantId
+        && safeStudentText(request.resource.data.nickname)
+        && request.resource.data.nickname.size() <= 30
+        && sentencesAreSafe(request.resource.data.sentences)
+        && request.resource.data.currentStep in [1, 2, 3, 4, 5]
+        && request.resource.data.status in ["writing", "help_requested", "help_generating", "help_delivered", "completed"]
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function helpRequestDataIsValid() {
+      return request.resource.data.keys().hasOnly(["ownerUid", "step", "status", "createdAt"])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.step in [1, 2, 3, 4, 5]
+        && request.resource.data.status == "requested"
+        && request.resource.data.createdAt is timestamp;
+    }
+
     match /teachers/{teacherId} {
-      allow read, write: if teacher() && request.auth.uid == teacherId;
+      allow get: if signedIn() && request.auth.uid == teacherId;
+      allow list, create, update, delete: if false;
     }
 
     match /sessions/{sessionId} {
-      allow read: if signedIn();
-      allow create, update, delete: if teacher();
+      allow read: if teacher();
+      allow create, update: if teacher();
+      allow delete: if teacher();
 
       match /participants/{participantId} {
         allow read: if teacher() || (signedIn() && resource.data.ownerUid == request.auth.uid);
-        allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
-        allow update: if teacher() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+        allow create: if anonymousStudent()
+          && activeSession(sessionId)
+          && !exists(/databases/$(database)/documents/sessions/$(sessionId)/deletedParticipants/$(request.auth.uid))
+          && participantDataIsValid(participantId);
+        allow update: if teacher() || (anonymousStudent()
+          && activeSession(sessionId)
+          && !exists(/databases/$(database)/documents/sessions/$(sessionId)/deletedParticipants/$(request.auth.uid))
+          && resource.data.ownerUid == request.auth.uid
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && participantDataIsValid(participantId));
         allow delete: if teacher();
       }
 
       match /helpRequests/{requestId} {
         allow read: if teacher() || (signedIn() && resource.data.ownerUid == request.auth.uid);
-        allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+        allow create: if anonymousStudent()
+          && activeSession(sessionId)
+          && !exists(/databases/$(database)/documents/sessions/$(sessionId)/deletedParticipants/$(request.auth.uid))
+          && helpRequestDataIsValid();
         allow update, delete: if teacher();
       }
 
       match /cheers/{cheerId} {
         allow read: if teacher() || (signedIn() && resource.data.ownerUid == request.auth.uid);
         allow create, update, delete: if teacher();
+      }
+
+      match /deletedParticipants/{ownerUid} {
+        allow read, create, update, delete: if teacher();
       }
     }
   }

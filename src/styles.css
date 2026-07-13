@@ -1,5 +1,5 @@
-@font-face { font-family: Paperlogy; src: url("../../17. AI_MC/public/fonts/Paperlogy-4Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
-@font-face { font-family: Paperlogy; src: url("../../17. AI_MC/public/fonts/Paperlogy-8ExtraBold.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+@font-face { font-family: Paperlogy; src: url("/fonts/Paperlogy-4Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: Paperlogy; src: url("/fonts/Paperlogy-8ExtraBold.woff2") format("woff2"); font-weight: 800; font-display: swap; }
 :root { font-family: Paperlogy, sans-serif; color: #140a29; background: #fdfbff; }
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }

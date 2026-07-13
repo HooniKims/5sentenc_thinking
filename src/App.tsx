@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import robotThink from "@ai-mc/characters/preview-frames/pose_think.png";
 import { nextStep, requestHelp } from "./lib/activity";
 import { createHelpRequest, saveParticipant } from "./lib/activityStore";
 import { ensureStudentIdentity } from "./lib/firebase";
@@ -46,7 +45,7 @@ export function App() {
           <strong>AI MC의 질문</strong>
           <span>방금 지나온 길에서 가장 먼저 떠오르는 장면은 무엇인가요?</span>
         </div>
-        <img className="guide-character" src={robotThink} alt="생각하는 AI MC 캐릭터" />
+        <img className="guide-character" src="/characters/pose_think.png" alt="생각하는 AI MC 캐릭터" />
         <label className="sentence-field" htmlFor="sentence">
           <span>나의 첫 번째 문장</span>
           <textarea id="sentence" value={sentence} onChange={(event) => setSentence(event.target.value)} />

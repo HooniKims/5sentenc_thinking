@@ -13,6 +13,7 @@ import { draftValidationMessage, guideCopies, guideQuestions, stepForSentenceCou
 import "./styles.css";
 
 const LIP_FRAME_INTERVAL_MS = 160;
+const DIDI_MOVE_DURATION_MS = 760;
 const analyzingHelpMessage = "디디가 문장 사이를 살펴보고 있어요.";
 
 type HelpViewState =
@@ -28,6 +29,10 @@ interface AppProps {
 function speechDurationFor(question: string): number {
   const readableCharacters = question.replaceAll(" ", "").length;
   return Math.min(Math.max(readableCharacters * 85, 1_800), 6_000);
+}
+
+function didiMoveDuration(): number {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : DIDI_MOVE_DURATION_MS;
 }
 
 function helpVariantFrom(variation: number): 0 | 1 | 2 {
@@ -79,6 +84,7 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
   const [promptVisible, setPromptVisible] = useState(false);
   const [didiPosition, setDidiPosition] = useState<"center" | "side">("center");
   const [didiTransitioning, setDidiTransitioning] = useState(false);
+  const [guideBubbleWaitingForDidi, setGuideBubbleWaitingForDidi] = useState(false);
   const [didiSpeaking, setDidiSpeaking] = useState(false);
   const [lipFrame, setLipFrame] = useState(0);
   const [ownerUid, setOwnerUid] = useState<string | null>(null);
@@ -95,7 +101,7 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
   const helpQuestion = helpQuestionFor(helpView, step, sentences);
   const helpActive = helpView.kind !== "idle";
   const displayedQuestion = helpQuestion ?? guideQuestion;
-  const showGuideBubble = didiPosition === "side" && (step > 1 || promptVisible || helpActive);
+  const showGuideBubble = didiPosition === "side" && !guideBubbleWaitingForDidi && (step > 1 || promptVisible || helpActive);
   const draftMessage = draftValidationMessage(draft);
   const didiGesture: RobotGesture = completed
     ? "complete"
@@ -107,12 +113,13 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
           ? "thinking"
           : "idle";
 
-  function moveDidiToSide(): void {
+  function moveDidiToSide(waitToOpenGuideBubble = false): void {
     if (didiPosition === "side") {
       return;
     }
 
     setDidiTransitioning(true);
+    setGuideBubbleWaitingForDidi(waitToOpenGuideBubble);
     setDidiPosition("side");
   }
 
@@ -121,7 +128,10 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
       return;
     }
 
-    const timer = window.setTimeout(() => setDidiTransitioning(false), 760);
+    const timer = window.setTimeout(() => {
+      setDidiTransitioning(false);
+      setGuideBubbleWaitingForDidi(false);
+    }, didiMoveDuration());
     return () => window.clearTimeout(timer);
   }, [didiTransitioning]);
 
@@ -200,7 +210,7 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
 
     const timeout = window.setTimeout(() => {
       setPromptVisible(true);
-      moveDidiToSide();
+      moveDidiToSide(true);
     }, 10_000);
     return () => window.clearTimeout(timeout);
   }, [draft, helpActive, promptVisible, sentences.length, step]);
@@ -299,6 +309,9 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
     helpRequestId.current = requestId;
     helpVariation.current += 1;
     setHelpView({ kind: "analyzing" });
+    if (didiPosition === "side") {
+      setGuideBubbleWaitingForDidi(false);
+    }
     moveDidiToSide();
     void requestGuidanceQuestion(createHelpGuidanceInput(step, participantSentences, draft), participantSentences)
       .then((question) => {
@@ -377,22 +390,12 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
           </div>
         ) : null}
         <div
-          className={`guide-character guide-character--${didiPosition}`}
+          className={`guide-character guide-character--${didiPosition}${didiTransitioning ? " guide-character--moving" : ""}`}
           data-position={didiPosition}
           data-testid="didi-position"
         >
           <div className="guide-character-motion">
-            {didiTransitioning ? (
-              <img
-                className="guide-character-transition"
-                src="/characters/pose_think.png"
-                alt=""
-                aria-hidden="true"
-                data-testid="didi-transition"
-              />
-            ) : (
-              <Robot3D gesture={didiGesture} lipFrame={lipFrame} />
-            )}
+            <Robot3D gesture={didiGesture} lipFrame={lipFrame} />
           </div>
         </div>
         <div className="writing-dock">

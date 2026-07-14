@@ -16,11 +16,14 @@ button, textarea { font: inherit; }
 .guide-bubble strong { margin-bottom: 6px; color: #4c3672; font-size: .76rem; letter-spacing: .02em; }
 .guide-question { margin-top: 4px; color: var(--ink); font-size: clamp(.98rem, 4vw, 1.12rem); font-weight: 800; line-height: 1.42; text-wrap: balance; }
 .recording-notice { position: relative; z-index: 2; max-width: 32ch; margin: 12px 0 0; color: var(--lime); font-size: .78rem; font-weight: 800; line-height: 1.45; }
-.guide-character { position: absolute; z-index: 1; left: 50%; bottom: 384px; width: 160px; height: 200px; transform: translateX(-50%); filter: drop-shadow(0 16px 18px #140a2966); transition: left 760ms cubic-bezier(.22, 1, .36, 1); }
-.guide-character--center { left: 50%; bottom: 300px; width: 128px; height: 160px; }
-.guide-character--side { left: calc(100% - 80px); }
+.guide-character { position: absolute; z-index: 1; left: 50%; bottom: 384px; width: 160px; height: 200px; transform: translateX(-50%) translateY(84px) scale(.8); transform-origin: 50% 100%; filter: drop-shadow(0 16px 18px #140a2966); transition: left 760ms cubic-bezier(.22, 1, .36, 1), transform 760ms cubic-bezier(.22, 1, .36, 1); }
+.guide-character--center { left: 50%; }
+.guide-character--side { left: calc(100% - 80px); transform: translateX(-50%) translateY(0) scale(1); }
+.guide-character--moving { will-change: left, transform; }
 .guide-character-motion, .robot-canvas { width: 100%; height: 100%; }
-.guide-character-transition { display: block; width: 100%; height: 100%; object-fit: contain; }
+.guide-character-motion { transform-origin: 50% 100%; }
+.guide-character--moving .guide-character-motion { animation: didi-run 210ms ease-in-out infinite alternate; }
+@keyframes didi-run { from { transform: rotate(-2.5deg); } to { transform: rotate(2.5deg); } }
 .student-card h1, .guide-copy, .guide-bubble, .sentence-field, .sentence-summary { word-break: keep-all; overflow-wrap: break-word; }
 .writing-dock { position: absolute; z-index: 4; right: 24px; bottom: 24px; left: 24px; display: grid; gap: 12px; min-width: 0; }
 .sentence-field { display: grid; gap: 8px; min-width: 0; padding: 12px; border: 1px solid #ffffff66; border-radius: 18px; background: #140a294d; }
@@ -87,9 +90,9 @@ button, textarea { font: inherit; }
   .student-card h1 { max-width: none; }
   .guide-copy { max-width: calc(100% - 116px); font-size: .82rem; letter-spacing: -.02em; line-height: 1.5; }
   .student-card:not(.completion-card) .guide-bubble { margin-right: var(--didi-mobile-lane); background: color-mix(in srgb, var(--vanilla) 92%, transparent); backdrop-filter: blur(6px); }
-  .guide-character { bottom: 330px; width: 132px; height: 168px; }
-  .guide-character--center { bottom: 284px; width: 120px; height: 152px; }
-  .guide-character--side { bottom: 380px; left: calc(100% - 66px); }
+  .guide-character { bottom: 380px; width: 132px; height: 168px; transform: translateX(-50%) translateY(96px) scale(.9091); }
+  .guide-character--center { left: 50%; }
+  .guide-character--side { left: calc(100% - 66px); transform: translateX(-50%) translateY(0) scale(1); }
   .writing-dock { right: 16px; left: 16px; }
   .writing-dock > .sentence-field { order: 1; }
   .writing-dock > .student-actions { order: 2; }
@@ -101,7 +104,8 @@ button, textarea { font: inherit; }
 }
 @media (max-width: 359px) {
   :root { --didi-mobile-lane: 112px; }
-  .guide-character--side { bottom: 368px; left: calc(100% - 54px); width: 108px; height: 138px; }
+  .guide-character { bottom: 368px; width: 108px; height: 138px; transform: translateX(-50%) translateY(84px) scale(1.1111); }
+  .guide-character--side { left: calc(100% - 54px); transform: translateX(-50%) translateY(0) scale(1); }
 }
 @media (min-width: 641px) {
   .student-card h1 { margin-top: 10px; }
@@ -114,9 +118,9 @@ button, textarea { font: inherit; }
   .completion-card { height: 100dvh; }
   .student-card:not(.completion-card) .guide-bubble { margin-top: 8px; margin-right: var(--didi-mobile-lane); padding: 12px; }
   .guide-copy { max-width: calc(100% - 100px); }
-  .guide-character { bottom: 368px; width: 116px; height: 146px; }
-  .guide-character--center { bottom: 274px; width: 104px; height: 132px; }
-  .guide-character--side { left: calc(100% - 58px); }
+  .guide-character { bottom: 368px; width: 116px; height: 146px; transform: translateX(-50%) translateY(94px) scale(.8966); }
+  .guide-character--center { left: 50%; }
+  .guide-character--side { left: calc(100% - 58px); transform: translateX(-50%) translateY(0) scale(1); }
   .writing-dock { right: 16px; bottom: 16px; left: 16px; gap: 6px; }
   .writing-dock .sentence-field { padding: 12px; }
   .sentence-history { height: 68px; min-height: 68px; gap: 2px; padding: 4px 12px; }
@@ -124,7 +128,7 @@ button, textarea { font: inherit; }
   .sentence-history__preview { font-size: .78rem; line-height: 1.2; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .guide-character, .sentence-history__backdrop, .sentence-history__dialog { transition: none; animation: none; }
+  .guide-character, .guide-character-motion, .sentence-history__backdrop, .sentence-history__dialog { transition: none; animation: none; }
 }
 .admin-shell { min-height: 100dvh; padding: 32px; color: var(--ink); background: var(--page); }
 .admin-shell--login { display: grid; place-items: center; background: radial-gradient(circle at 10% 10%, color-mix(in srgb, var(--lime) 46%, transparent), transparent 28%), radial-gradient(circle at 90% 88%, color-mix(in srgb, var(--pink) 25%, transparent), transparent 32%), var(--page); }

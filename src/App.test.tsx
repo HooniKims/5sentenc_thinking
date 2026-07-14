@@ -100,7 +100,7 @@ describe("학생 활동 시작 화면", () => {
     expect(screen.getByRole("button", { name: "도움!" })).toBeInTheDocument();
   });
 
-  it("처음 10초 동안 디디는 가운데에서 기다리다가 질문을 건넨다", () => {
+  it("처음 10초 뒤 3D 디디가 달려가듯 이동한 다음 질문을 건넨다", () => {
     vi.useFakeTimers();
     renderActivity();
 
@@ -111,17 +111,69 @@ describe("학생 활동 시작 화면", () => {
       vi.advanceTimersByTime(10_000);
     });
 
-    expect(screen.getByText("디디의 질문")).toBeInTheDocument();
     expect(screen.getByTestId("didi-position")).toHaveAttribute("data-position", "side");
-
-    expect(screen.getByTestId("didi-transition")).toHaveClass("guide-character-transition");
+    expect(screen.getByTestId("didi-position")).toHaveClass("guide-character--moving");
+    expect(screen.getByTestId("didi-gesture")).toHaveAttribute("data-gesture", "idle");
+    expect(screen.queryByTestId("didi-transition")).not.toBeInTheDocument();
+    expect(screen.queryByText("디디의 질문")).not.toBeInTheDocument();
 
     act(() => {
-      vi.advanceTimersByTime(760);
+      vi.advanceTimersByTime(759);
     });
 
+    expect(screen.getByTestId("didi-position")).toHaveClass("guide-character--moving");
+    expect(screen.getByTestId("didi-gesture")).toHaveAttribute("data-gesture", "idle");
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+
+    expect(screen.getByText("디디의 질문")).toBeInTheDocument();
+    expect(screen.getByTestId("didi-position")).not.toHaveClass("guide-character--moving");
     expect(screen.getByTestId("didi-gesture")).toHaveAttribute("data-gesture", "speaking");
     vi.useRealTimers();
+  });
+
+  it("디디가 이동 중일 때 도움을 누르면 기다리지 않고 도움 질문을 연다", async () => {
+    vi.useFakeTimers();
+    renderActivity();
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("button", { name: "도움!" })).toBeEnabled();
+
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "도움!" }));
+
+    expect(screen.getByText("디디가 문장 사이를 살펴보고 있어요.")).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it("동작 줄이기 설정에서는 자동 질문을 바로 연다", () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    vi.useFakeTimers();
+
+    try {
+      renderActivity();
+      act(() => {
+        vi.advanceTimersByTime(10_000);
+      });
+      act(() => {
+        vi.advanceTimersByTime(0);
+      });
+
+      expect(screen.getByText("디디의 질문")).toBeInTheDocument();
+    } finally {
+      window.matchMedia = originalMatchMedia;
+      vi.useRealTimers();
+    }
   });
 
   it("질문을 마친 뒤에는 더빙 입 프레임을 멈춘다", () => {
@@ -130,6 +182,10 @@ describe("학생 활동 시작 화면", () => {
 
     act(() => {
       vi.advanceTimersByTime(10_000);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(760);
     });
 
     act(() => {

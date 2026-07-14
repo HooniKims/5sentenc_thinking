@@ -9,6 +9,8 @@ export const guideQuestions = [
   "처음과 달라진 생각을 담은 마지막 문장을 써 볼까요?"
 ] as const;
 
+export const openingDidiSpeech = "너무 어렵게 생각하지 마세요. 이곳까지 어떻게 왔는지 간단하게 써도 좋아요.";
+
 export const guideCopies = [
   "정답보다 내 생각이 먼저예요. 가장 먼저 떠오른 장면을 한 문장으로 적어 보세요.",
   "앞 문장을 반복하지 않고, 새로 발견한 장면을 두 번째 문장으로 적어 보세요.",

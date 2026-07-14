@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
@@ -16,8 +16,8 @@ const identity = vi.hoisted(() => ({
   ensureStudentIdentity: vi.fn<() => Promise<string>>()
 }));
 
-vi.mock("./components/Robot3D", () => ({
-  Robot3D: ({ gesture, lipFrame = 0 }: { readonly gesture: string; readonly lipFrame?: number }) => (
+vi.mock("./components/LazyRobot3D", () => ({
+  LazyRobot3D: ({ gesture, lipFrame = 0 }: { readonly gesture: string; readonly lipFrame?: number }) => (
     <div data-gesture={gesture} data-lip-frame={lipFrame} data-robot-3d="true" data-testid="didi-gesture" />
   )
 }));
@@ -129,6 +129,7 @@ describe("학생 활동 시작 화면", () => {
     });
 
     expect(screen.getByText("디디의 질문")).toBeInTheDocument();
+    expect(screen.getByText("너무 어렵게 생각하지 마세요. 이곳까지 어떻게 왔는지 간단하게 써도 좋아요.")).toBeInTheDocument();
     expect(screen.getByTestId("didi-position")).not.toHaveClass("guide-character--moving");
     expect(screen.getByTestId("didi-gesture")).toHaveAttribute("data-gesture", "speaking");
     vi.useRealTimers();
@@ -511,6 +512,111 @@ describe("학생 활동 시작 화면", () => {
     expect(screen.getByRole("heading", { name: "다섯 문장이 완성됐어요" })).toBeInTheDocument();
     expect(screen.getByTestId("complete-paragraph")).toHaveTextContent(sentences.join(" "));
     expect(screen.getByTestId("didi-gesture")).toHaveAttribute("data-gesture", "complete");
+  });
+
+  it("다섯 문장을 완성하면 칭찬 뒤에 디디의 마법으로 이어 읽기 버전을 보여 준다", () => {
+    vi.useFakeTimers();
+    renderActivity();
+    const sentences = [
+      "버스를 타고 왔어요.",
+      "창밖의 비를 봤어요.",
+      "우산을 든 친구를 만났어요.",
+      "함께 교문으로 걸었어요.",
+      "그래서 오늘 길이 더 오래 기억날 것 같아요."
+    ] as const;
+
+    sentences.forEach((sentence, index) => {
+      fireEvent.change(screen.getByLabelText(`${index + 1}번째 문장`), { target: { value: sentence } });
+      fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+    });
+
+    expect(screen.getByText("이미 여러분은 훌륭한 글을 쓸 준비가 되었어요.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "디디의 마법 펼치기" })).toBeInTheDocument();
+    expect(screen.queryByTestId("magic-paragraph")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "디디의 마법 펼치기" }));
+
+    expect(screen.getByText("디디가 마법을 펼치고 있어요.")).toBeInTheDocument();
+    expect(screen.getByTestId("didi-gesture")).toHaveAttribute("data-gesture", "cheer");
+
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+
+    expect(screen.getByTestId("magic-paragraph")).toHaveTextContent(
+      "버스를 타고 왔어요. 그러다 창밖의 비를 봤어요. 그때 우산을 든 친구를 만났어요. 이어서 함께 교문으로 걸었어요. 그래서 오늘 길이 더 오래 기억날 것 같아요."
+    );
+    expect(screen.getByRole("heading", { name: "더 멋진 글로 다듬어 볼까요?" })).toBeInTheDocument();
+    expect(screen.getByTestId("complete-paragraph")).toHaveTextContent(sentences.join(" "));
+    vi.useRealTimers();
+  });
+
+  it("마법을 펼치는 동안 축하 말풍선에서 상태를 알리고 다듬기 안내는 실제 행동과 맞춘다", () => {
+    vi.useFakeTimers();
+    renderActivity();
+    const sentences = ["버스를 타고 왔어요.", "창밖의 비를 봤어요.", "친구를 만났어요.", "함께 걸었어요.", "오늘 길이 기억나요."] as const;
+
+    sentences.forEach((sentence, index) => {
+      fireEvent.change(screen.getByLabelText(`${index + 1}번째 문장`), { target: { value: sentence } });
+      fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "디디의 마법 펼치기" }));
+
+    const bubble = screen.getByText("디디의 축하").closest("div");
+    if (!bubble) {
+      throw new Error("축하 말풍선을 찾지 못했습니다.");
+    }
+    expect(within(bubble).getByText("디디가 마법을 펼치고 있어요.")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+
+    expect(screen.getByText("세 가지 중 하나를 골라, 원문에 내 말로 한마디를 더해 보세요.")).toBeInTheDocument();
+    expect(screen.queryByText("아래 문장을 눌러, 내 말로 하나만 더 보태 보세요.")).not.toBeInTheDocument();
+  });
+
+  it("마법 결과에 이름을 붙이고 키보드 초점을 이어 읽기 영역으로 옮긴다", () => {
+    vi.useFakeTimers();
+    renderActivity();
+    const sentences = ["버스를 타고 왔어요.", "창밖의 비를 봤어요.", "친구를 만났어요.", "함께 걸었어요.", "오늘 길이 기억나요."] as const;
+
+    sentences.forEach((sentence, index) => {
+      fireEvent.change(screen.getByLabelText(`${index + 1}번째 문장`), { target: { value: sentence } });
+      fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "디디의 마법 펼치기" }));
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+
+    const result = screen.getByRole("region", { name: "디디가 이어 읽어 본 글" });
+    expect(result).toHaveFocus();
+    expect(screen.getByRole("heading", { level: 2, name: "디디가 이어 읽어 본 글" })).toBeInTheDocument();
+  });
+
+  it("동작 줄이기 설정에서는 마법 효과를 건너뛰고 이어 읽기 버전을 바로 연다", () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    renderActivity();
+    const sentences = ["버스를 타고 왔어요.", "창밖의 비를 봤어요.", "친구를 만났어요.", "함께 걸었어요.", "오늘 길이 기억나요."] as const;
+
+    try {
+      sentences.forEach((sentence, index) => {
+        fireEvent.change(screen.getByLabelText(`${index + 1}번째 문장`), { target: { value: sentence } });
+        fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "디디의 마법 펼치기" }));
+
+      expect(screen.getByTestId("magic-paragraph")).toBeInTheDocument();
+      expect(screen.queryByText("디디가 문장 사이에 마법을 더하고 있어요.")).not.toBeInTheDocument();
+      expect(screen.getByTestId("didi-gesture")).toHaveAttribute("data-gesture", "complete");
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
   });
 
   it("첫 카드 수정은 완성 문단에 반영된다", () => {

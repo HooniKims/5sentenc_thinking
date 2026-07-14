@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Robot3D, type RobotGesture } from "./components/Robot3D";
+import { CompletionExperience } from "./components/CompletionExperience";
+import { LazyRobot3D } from "./components/LazyRobot3D";
 import { SentenceHistory } from "./components/SentenceHistory";
-import { SentenceList } from "./components/SentenceList";
 import { createHelpRequest, saveParticipant, sessionIsActive } from "./lib/activityStore";
 import { ensureStudentIdentity } from "./lib/firebase";
 import { requestGuidanceQuestion } from "./lib/helpClient";
@@ -9,7 +9,7 @@ import { contextualHelpQuestion, createHelpGuidanceInput } from "./lib/helpGuida
 import { createNickname } from "./lib/nickname";
 import { isSingleSentence, replaceSentence } from "./lib/sentences";
 import { requestHelp } from "./lib/activity";
-import { draftValidationMessage, guideCopies, guideQuestions, stepForSentenceCount } from "./lib/studentWriting";
+import { draftValidationMessage, guideCopies, guideQuestions, openingDidiSpeech, stepForSentenceCount } from "./lib/studentWriting";
 import "./styles.css";
 
 const LIP_FRAME_INTERVAL_MS = 160;
@@ -91,7 +91,6 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
   const [recordingUnavailable, setRecordingUnavailable] = useState(false);
   const [nickname] = useState(createNickname);
   const draftTextarea = useRef<HTMLTextAreaElement>(null);
-  const completionCard = useRef<HTMLElement>(null);
   const helpRequestId = useRef(0);
   const helpVariation = useRef(0);
   const [focusDraft, setFocusDraft] = useState(false);
@@ -100,12 +99,10 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
   const guideCopy = guideCopies[step - 1] ?? guideCopies[0];
   const helpQuestion = helpQuestionFor(helpView, step, sentences);
   const helpActive = helpView.kind !== "idle";
-  const displayedQuestion = helpQuestion ?? guideQuestion;
+  const displayedQuestion = helpQuestion ?? (step === 1 && promptVisible ? openingDidiSpeech : guideQuestion);
   const showGuideBubble = didiPosition === "side" && !guideBubbleWaitingForDidi && (step > 1 || promptVisible || helpActive);
   const draftMessage = draftValidationMessage(draft);
-  const didiGesture: RobotGesture = completed
-    ? "complete"
-    : didiSpeaking
+  const didiGesture = didiSpeaking
       ? "speaking"
       : helpActive
         ? "help"
@@ -143,17 +140,6 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
     draftTextarea.current?.focus({ preventScroll: true });
     setFocusDraft(false);
   }, [focusDraft, step]);
-
-  useEffect(() => {
-    if (!completed) {
-      return;
-    }
-
-    const frame = window.requestAnimationFrame(() => {
-      completionCard.current?.scrollTo({ top: 0 });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [completed]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -354,27 +340,7 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
   }
 
   if (completed) {
-    return (
-      <main className="student-shell">
-        <section ref={completionCard} className="student-card completion-card" aria-label="다섯 문장 활동 완료">
-          <p className="eyebrow">{nickname} · 길찾기 탐험 · 5 / 5</p>
-          <h1>다섯 문장이 완성됐어요</h1>
-          <p className="guide-copy">다섯 문장을 한 문단으로 이어 읽어 보세요.</p>
-          <div className="guide-bubble">
-            <strong>디디와 돌아보기</strong>
-            <span>처음 떠올린 장면이 어떻게 더 또렷해졌나요?</span>
-          </div>
-          <div className="guide-character"><Robot3D gesture={didiGesture} /></div>
-          <div className="sentence-summary">
-            <article>
-              <span>내가 지나온 길</span>
-              <p data-testid="complete-paragraph">{sentences.join(" ")}</p>
-            </article>
-          </div>
-          <SentenceList sentences={sentences} onSaveEdit={handleSaveEdit} />
-        </section>
-      </main>
-    );
+    return <CompletionExperience nickname={nickname} sentences={sentences} onSaveEdit={handleSaveEdit} />;
   }
 
   return (
@@ -395,7 +361,7 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
           data-testid="didi-position"
         >
           <div className="guide-character-motion">
-            <Robot3D gesture={didiGesture} lipFrame={lipFrame} />
+            <LazyRobot3D gesture={didiGesture} lipFrame={lipFrame} />
           </div>
         </div>
         <div className="writing-dock">

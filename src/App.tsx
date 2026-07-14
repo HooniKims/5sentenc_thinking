@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Robot3D, type RobotGesture } from "./components/Robot3D";
 import { SentenceHistory } from "./components/SentenceHistory";
 import { SentenceList } from "./components/SentenceList";
-import { createHelpRequest, saveParticipant } from "./lib/activityStore";
+import { createHelpRequest, saveParticipant, sessionIsActive } from "./lib/activityStore";
 import { ensureStudentIdentity } from "./lib/firebase";
 import { requestGuidanceQuestion } from "./lib/helpClient";
-import { createHelpGuidanceInput, fallbackHelpQuestion } from "./lib/helpGuidance";
+import { contextualHelpQuestion, createHelpGuidanceInput } from "./lib/helpGuidance";
 import { createNickname } from "./lib/nickname";
 import { isSingleSentence, replaceSentence } from "./lib/sentences";
 import { requestHelp } from "./lib/activity";
@@ -21,9 +21,8 @@ type HelpViewState =
   | { readonly kind: "ready"; readonly question: string }
   | { readonly kind: "fallback"; readonly variation: number };
 
-interface HelpRequestContext {
-  readonly sentences: readonly string[];
-  readonly step: 1 | 2 | 3 | 4 | 5;
+interface AppProps {
+  readonly sessionId?: string | null;
 }
 
 function speechDurationFor(question: string): number {
@@ -31,7 +30,24 @@ function speechDurationFor(question: string): number {
   return Math.min(Math.max(readableCharacters * 85, 1_800), 6_000);
 }
 
-function helpQuestionFor(state: HelpViewState, step: 1 | 2 | 3 | 4 | 5): string | null {
+function helpVariantFrom(variation: number): 0 | 1 | 2 {
+  switch (variation % 3) {
+    case 0:
+      return 0;
+    case 1:
+      return 1;
+    case 2:
+      return 2;
+    default:
+      return 0;
+  }
+}
+
+function helpQuestionFor(
+  state: HelpViewState,
+  step: 1 | 2 | 3 | 4 | 5,
+  sentences: readonly string[]
+): string | null {
   switch (state.kind) {
     case "idle":
       return null;
@@ -40,7 +56,7 @@ function helpQuestionFor(state: HelpViewState, step: 1 | 2 | 3 | 4 | 5): string 
     case "ready":
       return state.question;
     case "fallback":
-      return fallbackHelpQuestion(step, state.variation);
+      return contextualHelpQuestion(step, sentences, helpVariantFrom(state.variation));
   }
 }
 
@@ -55,7 +71,7 @@ function helpButtonLabel(state: HelpViewState): string {
   }
 }
 
-export function App() {
+export function App({ sessionId = null }: AppProps): React.JSX.Element {
   const [sentences, setSentences] = useState<readonly string[]>([]);
   const [draft, setDraft] = useState("");
   const [completed, setCompleted] = useState(false);
@@ -72,12 +88,11 @@ export function App() {
   const completionCard = useRef<HTMLElement>(null);
   const helpRequestId = useRef(0);
   const helpVariation = useRef(0);
-  const pendingHelpRequests = useRef<readonly HelpRequestContext[]>([]);
   const [focusDraft, setFocusDraft] = useState(false);
   const step = stepForSentenceCount(sentences.length);
   const guideQuestion = guideQuestions[step - 1] ?? guideQuestions[0];
   const guideCopy = guideCopies[step - 1] ?? guideCopies[0];
-  const helpQuestion = helpQuestionFor(helpView, step);
+  const helpQuestion = helpQuestionFor(helpView, step, sentences);
   const helpActive = helpView.kind !== "idle";
   const displayedQuestion = helpQuestion ?? guideQuestion;
   const showGuideBubble = didiPosition === "side" && (step > 1 || promptVisible || helpActive);
@@ -131,25 +146,36 @@ export function App() {
   }, [completed]);
 
   useEffect(() => {
-    void ensureStudentIdentity().then(setOwnerUid).catch(() => setRecordingUnavailable(true));
-  }, []);
-
-  useEffect(() => {
-    if (recordingUnavailable || !ownerUid || pendingHelpRequests.current.length === 0) {
+    if (!sessionId) {
       return;
     }
 
-    const queuedRequests = pendingHelpRequests.current;
-    pendingHelpRequests.current = [];
-    void Promise.all(
-      queuedRequests.map((pendingRequest) =>
-        createHelpRequest("arrival", ownerUid, nickname, pendingRequest.sentences, pendingRequest.step)
-      )
-    ).catch(() => setRecordingUnavailable(true));
-  }, [nickname, ownerUid, recordingUnavailable]);
+    let active = true;
+    void ensureStudentIdentity()
+      .then(async (studentId) => {
+        const activeSession = await sessionIsActive(sessionId);
+        if (!active) {
+          return;
+        }
+        if (!activeSession) {
+          setRecordingUnavailable(true);
+          return;
+        }
+        setOwnerUid(studentId);
+      })
+      .catch(() => {
+        if (active) {
+          setRecordingUnavailable(true);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [sessionId]);
 
   useEffect(() => {
-    if (recordingUnavailable || !ownerUid) {
+    if (recordingUnavailable || !ownerUid || !sessionId) {
       return;
     }
 
@@ -160,12 +186,12 @@ export function App() {
     const participantStatus = completed ? "completed" : helpActive ? "help_requested" : "writing";
 
     const timeout = window.setTimeout(() => {
-      void saveParticipant("arrival", ownerUid, nickname, sentences, step, participantStatus).catch(() =>
+      void saveParticipant(sessionId, ownerUid, nickname, sentences, step, participantStatus).catch(() =>
         setRecordingUnavailable(true)
       );
     }, 400);
     return () => window.clearTimeout(timeout);
-  }, [completed, helpActive, nickname, ownerUid, recordingUnavailable, sentences, step]);
+  }, [completed, helpActive, nickname, ownerUid, recordingUnavailable, sentences, sessionId, step]);
 
   useEffect(() => {
     if (step !== 1 || sentences.length > 0 || draft.trim() || helpActive || promptVisible) {
@@ -248,6 +274,10 @@ export function App() {
   }
 
   function handleHelp(): void {
+    if (recordingUnavailable || !ownerUid || !sessionId) {
+      return;
+    }
+
     if (helpView.kind === "analyzing") {
       return;
     }
@@ -270,7 +300,7 @@ export function App() {
     helpVariation.current += 1;
     setHelpView({ kind: "analyzing" });
     moveDidiToSide();
-    void requestGuidanceQuestion(createHelpGuidanceInput(step, sentences, draft))
+    void requestGuidanceQuestion(createHelpGuidanceInput(step, participantSentences, draft), participantSentences)
       .then((question) => {
         if (helpRequestId.current === requestId) {
           setHelpView({ kind: "ready", question });
@@ -281,14 +311,33 @@ export function App() {
           setHelpView({ kind: "fallback", variation });
         }
       });
-    if (ownerUid) {
-      void createHelpRequest("arrival", ownerUid, nickname, participantSentences, step).catch(() =>
-        setRecordingUnavailable(true)
-      );
-      return;
-    }
+    void createHelpRequest(sessionId, ownerUid, nickname, participantSentences, step).catch(() =>
+      setRecordingUnavailable(true)
+    );
+  }
 
-    pendingHelpRequests.current = [...pendingHelpRequests.current, { sentences: participantSentences, step }];
+  if (!sessionId) {
+    return (
+      <main className="student-shell">
+        <section className="student-card student-card--link-needed" aria-labelledby="session-link-title">
+          <p className="eyebrow">5문장 길찾기</p>
+          <h1 id="session-link-title">수업 링크가 필요해요</h1>
+          <p className="guide-copy">진행자가 안내한 QR을 다시 스캔해 주세요. 새 수업마다 참여 링크가 달라져요.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (recordingUnavailable) {
+    return (
+      <main className="student-shell">
+        <section className="student-card student-card--link-needed" aria-labelledby="archived-session-title">
+          <p className="eyebrow">5문장 길찾기</p>
+          <h1 id="archived-session-title">이 수업은 보관됐어요</h1>
+          <p className="guide-copy">기록을 모두 정리한 수업이에요. 진행자가 안내한 새 QR로 다시 들어와 주세요.</p>
+        </section>
+      </main>
+    );
   }
 
   if (completed) {
@@ -321,11 +370,6 @@ export function App() {
         <p className="eyebrow">{nickname} · 길찾기 탐험 · {step} / 5</p>
         <h1>여기에 어떻게 오셨어요?</h1>
         <p className="guide-copy">{guideCopy}</p>
-        {recordingUnavailable ? (
-          <p className="recording-notice" role="status">
-            이 수업의 기록 연결이 끝났어요. 지금 적는 문장은 대시보드에 남지 않아요.
-          </p>
-        ) : null}
         {showGuideBubble ? (
           <div className="guide-bubble">
             <strong>{helpActive ? "디디의 도움 질문" : "디디의 질문"}</strong>
@@ -371,7 +415,7 @@ export function App() {
             {draftMessage ? <p className="sentence-validation" role="status">{draftMessage}</p> : null}
           </label>
           <div className="student-actions">
-            <button type="button" className="help-button" disabled={helpView.kind === "analyzing"} onClick={handleHelp}>
+            <button type="button" className="help-button" disabled={helpView.kind === "analyzing" || !ownerUid} onClick={handleHelp}>
               {helpButtonLabel(helpView)}
             </button>
             <button type="button" className="next-button" disabled={draftMessage !== null} onClick={handleSaveSentence}>

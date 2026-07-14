@@ -88,6 +88,155 @@ export function questionForVariant(step: HelpStep, variant: 0 | 1 | 2): string {
   return fallbackHelpQuestion(step, variant);
 }
 
+const CONTEXT_SENTENCE_MAXIMUM_LENGTH = 32;
+
+function contextualSentenceExcerpt(sentence: string): string {
+  const normalized = sentence
+    .replace(/\s+/gu, " ")
+    .trim()
+    .replace(/[?!]/gu, "")
+    .replace(/[.。]+$/gu, "");
+  const characters = [...normalized];
+  if (characters.length <= CONTEXT_SENTENCE_MAXIMUM_LENGTH) {
+    return normalized;
+  }
+
+  return `${characters.slice(0, CONTEXT_SENTENCE_MAXIMUM_LENGTH).join("")}…`;
+}
+
+type QuestionVariants = readonly [string, string, string];
+
+function hasFinalConsonant(word: string): boolean {
+  const lastCharacter = word.at(-1);
+  if (!lastCharacter) {
+    return false;
+  }
+
+  const codePoint = lastCharacter.codePointAt(0);
+  if (!codePoint || codePoint < 0xac00 || codePoint > 0xd7a3) {
+    return false;
+  }
+
+  return (codePoint - 0xac00) % 28 !== 0;
+}
+
+function withObjectParticle(word: string): string {
+  return `${word}${hasFinalConsonant(word) ? "을" : "를"}`;
+}
+
+function openingQuestionVariants(sentence: string): QuestionVariants {
+  const vehicle = ["버스", "지하철", "기차", "택시", "자동차", "차"].find((candidate) => sentence.includes(candidate));
+  const riding = /(?:타|탄|타고|내리|내린|내렸)/u.test(sentence);
+  if (vehicle && riding) {
+    const vehicleObject = withObjectParticle(vehicle);
+    return [
+      `${vehicle} 안이나 창밖에서 가장 먼저 보인 것은 무엇이었나요?`,
+      `${vehicleObject} 타고 오는 동안 어떤 소리가 들리거나 어떤 느낌이 들었나요?`,
+      `${vehicleObject} 타거나 내린 뒤, 내가 한 일은 무엇이었나요?`
+    ];
+  }
+
+  if (/(?:걷|걸어|걸었|뛰)/u.test(sentence)) {
+    return [
+      "걸어온 길에서 가장 먼저 보인 것은 무엇이었나요?",
+      "길을 걸을 때 들린 소리나 바람은 어땠나요?",
+      "걷다가 내가 한 행동은 무엇이었나요?"
+    ];
+  }
+
+  if (/(?:비|눈|바람|햇빛|햇살)/u.test(sentence)) {
+    return [
+      "그 날씨 속에서 가장 먼저 눈에 들어온 것은 무엇이었나요?",
+      "그 날씨가 몸에 닿을 때 어떤 느낌이 들었나요?",
+      "그 날씨 때문에 내가 한 행동은 무엇이었나요?"
+    ];
+  }
+
+  if (/(?:친구|동생|언니|오빠|엄마|아빠|선생님|사람)/u.test(sentence)) {
+    return [
+      "그 사람과 함께 있던 장면에서 가장 먼저 보인 것은 무엇이었나요?",
+      "그 사람이 한 말이나 표정 중 무엇이 기억나나요?",
+      "그 사람을 만난 뒤 내가 한 행동은 무엇이었나요?"
+    ];
+  }
+
+  if (/(?:도착|들어가|들어왔|왔)/u.test(sentence)) {
+    return [
+      "도착한 곳에서 가장 먼저 보인 것은 무엇이었나요?",
+      "도착한 곳에서 어떤 소리가 들리거나 어떤 느낌이 들었나요?",
+      "도착한 뒤 내가 한 행동은 무엇이었나요?"
+    ];
+  }
+
+  return [
+    "그다음에 가장 먼저 눈에 들어온 것은 무엇이었나요?",
+    "그때 들린 소리나 몸의 느낌은 무엇이었나요?",
+    "그다음에 내가 한 행동은 무엇이었나요?"
+  ];
+}
+
+function openingQuestion(sentence: string, excerpt: string, variant: 0 | 1 | 2): string {
+  return `“${excerpt}” 다음에는 ${openingQuestionVariants(sentence)[variant]}`;
+}
+
+export function contextualHelpQuestion(
+  step: HelpStep,
+  sentences: readonly string[],
+  variant: 0 | 1 | 2
+): string {
+  const firstSentence = sentences[0];
+  const latestSentence = sentences.at(-1);
+  const referenceSentence = step === 5 ? firstSentence : latestSentence;
+  if (!referenceSentence) {
+    return questionForVariant(step, variant);
+  }
+
+  const excerpt = contextualSentenceExcerpt(referenceSentence);
+  if (!excerpt) {
+    return questionForVariant(step, variant);
+  }
+
+  switch (step) {
+    case 1:
+      return questionForVariant(step, variant);
+    case 2:
+      return openingQuestion(referenceSentence, excerpt, variant);
+    case 3:
+      switch (variant) {
+        case 0:
+          return `“${excerpt}” 때 주변에서 새로 눈에 들어온 것은 무엇이었나요?`;
+        case 1:
+          return `“${excerpt}” 때 들린 소리나 몸의 느낌은 무엇이었나요?`;
+        case 2:
+          return `“${excerpt}” 뒤에는 어떤 일이 이어졌나요?`;
+        default:
+          return questionForVariant(step, variant);
+      }
+    case 4:
+      switch (variant) {
+        case 0:
+          return `“${excerpt}” 뒤에 어떤 장면이 이어졌나요?`;
+        case 1:
+          return `“${excerpt}” 때 어떤 생각이나 느낌이 들었나요?`;
+        case 2:
+          return `“${excerpt}” 뒤에 내가 한 행동은 무엇이었나요?`;
+        default:
+          return questionForVariant(step, variant);
+      }
+    case 5:
+      switch (variant) {
+        case 0:
+          return `처음의 “${excerpt}”에서 가장 기억에 남는 장면은 무엇인가요?`;
+        case 1:
+          return `처음의 “${excerpt}” 때와 비교해 지금은 무엇이 다르게 느껴지나요?`;
+        case 2:
+          return `처음의 “${excerpt}” 뒤로 이어진 일 중 무엇을 남기고 싶나요?`;
+        default:
+          return questionForVariant(step, variant);
+      }
+  }
+}
+
 export function isSingleThinkingQuestion(question: string): boolean {
   const trimmed = question.trim();
   const questionMarkCount = [...trimmed].filter((character) => character === "?").length;

@@ -15,6 +15,8 @@ type DeletionProgress = {
 
 export interface TeacherDashboardProps {
   readonly participants: readonly SessionParticipant[];
+  readonly archiving?: boolean;
+  readonly studentHref?: string;
   readonly onDeleteParticipant: (participant: SessionParticipant, onProgress?: DeleteProgress) => Promise<void>;
   readonly onDeleteSession: (onProgress?: DeleteProgress) => Promise<void>;
   readonly onDeleteError?: (message: string) => void;
@@ -32,7 +34,7 @@ function latestThought(sentences: readonly string[]): string {
   return sentences.filter((sentence) => sentence.trim()).join(" ") || "아직 문장을 쓰기 전이에요.";
 }
 
-function dialogCopy(target: DeletionTarget): { readonly title: string; readonly description: string; readonly confirmLabel: string } {
+function dialogCopy(target: DeletionTarget, archiving: boolean): { readonly title: string; readonly description: string; readonly confirmLabel: string } {
   if (target.kind === "participant") {
     return {
       title: `${target.participant.nickname}의 기록을 삭제할까요?`,
@@ -41,15 +43,25 @@ function dialogCopy(target: DeletionTarget): { readonly title: string; readonly 
     };
   }
 
+  if (archiving) {
+    return {
+      title: "남은 수업 기록을 다시 정리할까요?",
+      description: "학생 참여는 이미 멈췄어요. 남아 있을 수 있는 문장, 도움 요청, 응원 기록을 다시 지운 뒤 수업을 보관합니다.",
+      confirmLabel: "정리 다시 시도"
+    };
+  }
+
   return {
     title: "수업 기록을 모두 삭제할까요?",
-    description: "모든 참여자, 도움 요청, 응원 기록을 지우고 이 수업을 닫습니다. 같은 QR에서는 새 기록을 받을 수 없어요.",
-    confirmLabel: "전체 기록 삭제"
+    description: "모든 참여자, 도움 요청, 응원 기록을 지우고 이 수업은 보관합니다. 같은 QR에서는 새 기록을 받을 수 없어요.",
+    confirmLabel: "기록 삭제하고 보관"
   };
 }
 
 export function TeacherDashboard({
   participants,
+  archiving = false,
+  studentHref = "/",
   onDeleteParticipant,
   onDeleteSession,
   onDeleteError
@@ -181,7 +193,7 @@ export function TeacherDashboard({
     }
   }
 
-  const copy = deletionTarget ? dialogCopy(deletionTarget) : null;
+  const copy = deletionTarget ? dialogCopy(deletionTarget, archiving) : null;
 
   return (
     <>
@@ -189,7 +201,7 @@ export function TeacherDashboard({
         <header className="admin-header">
           <div>
             <p className="admin-kicker">5문장 길찾기 · 실시간 운영</p>
-            <h1 ref={dashboardHeadingRef} tabIndex={-1}>학생들의 생각이 자라고 있어요</h1>
+            <h1 ref={dashboardHeadingRef} tabIndex={-1}>{archiving ? "남은 기록을 정리하고 있어요" : "학생들의 생각이 자라고 있어요"}</h1>
           </div>
           <div className="admin-header__actions">
             <button
@@ -199,11 +211,15 @@ export function TeacherDashboard({
               disabled={isDeleting}
               onClick={(event) => openDeletionDialog({ kind: "session" }, event.currentTarget)}
             >
-              수업 기록 모두 삭제
+              {archiving ? "수업 정리 다시 시도" : "기록 삭제하고 수업 보관"}
             </button>
-            <a href="/" className="admin-exit">
-              학생 화면 보기
-            </a>
+            {archiving ? (
+              <span className="admin-exit" role="status">학생 참여를 멈췄어요</span>
+            ) : (
+              <a href={studentHref} className="admin-exit">
+                학생 화면 보기
+              </a>
+            )}
           </div>
         </header>
         <dl className="admin-stats">
@@ -225,7 +241,7 @@ export function TeacherDashboard({
           </div>
         </dl>
         {orderedParticipants.length === 0 ? (
-          <p className="admin-empty">아직 참여한 학생이 없어요. QR로 들어오면 이곳에 실시간으로 나타납니다.</p>
+          <p className="admin-empty">{archiving ? "남은 기록을 확인한 뒤 다시 정리할 수 있어요." : "아직 참여한 학생이 없어요. QR로 들어오면 이곳에 실시간으로 나타납니다."}</p>
         ) : (
           <div className="participant-grid" aria-live="polite">
             {orderedParticipants.map((participant) => (

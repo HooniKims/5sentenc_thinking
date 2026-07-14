@@ -66,12 +66,15 @@ service cloud.firestore {
     }
 
     match /sessions/{sessionId} {
-      allow read: if teacher();
+      allow get: if teacher() || (anonymousStudent() && resource.data.state == "active");
+      allow list: if teacher();
       allow create, update: if teacher();
       allow delete: if teacher();
 
       match /participants/{participantId} {
-        allow read: if teacher() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+        allow read: if teacher() || (signedIn()
+          && activeSession(sessionId)
+          && resource.data.ownerUid == request.auth.uid);
         allow create: if anonymousStudent()
           && activeSession(sessionId)
           && !exists(/databases/$(database)/documents/sessions/$(sessionId)/deletedParticipants/$(request.auth.uid))
@@ -86,7 +89,9 @@ service cloud.firestore {
       }
 
       match /helpRequests/{requestId} {
-        allow read: if teacher() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+        allow read: if teacher() || (signedIn()
+          && activeSession(sessionId)
+          && resource.data.ownerUid == request.auth.uid);
         allow create: if anonymousStudent()
           && activeSession(sessionId)
           && !exists(/databases/$(database)/documents/sessions/$(sessionId)/deletedParticipants/$(request.auth.uid))
@@ -95,7 +100,9 @@ service cloud.firestore {
       }
 
       match /cheers/{cheerId} {
-        allow read: if teacher() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+        allow read: if teacher() || (signedIn()
+          && activeSession(sessionId)
+          && resource.data.ownerUid == request.auth.uid);
         allow create, update, delete: if teacher();
       }
 

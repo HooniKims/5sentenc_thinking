@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { SessionParticipant } from "./activityStore";
+import type { ClassSession, SessionParticipant } from "./activityStore";
 
 interface MockDocumentReference {
   readonly path: string;
@@ -36,6 +36,7 @@ const firestore = vi.hoisted(() => {
   const collectionPaths: string[] = [];
   const queryConstraints: MockWhereConstraint[] = [];
   const committedBatches: MockDocumentReference[][] = [];
+  const deletedDocuments: MockDocumentReference[] = [];
   const setDocCalls: unknown[][] = [];
   const commitOutcomes: (Error | null)[] = [];
   let responseIndex = 0;
@@ -46,6 +47,7 @@ const firestore = vi.hoisted(() => {
       collectionPaths.splice(0);
       queryConstraints.splice(0);
       committedBatches.splice(0);
+      deletedDocuments.splice(0);
       setDocCalls.splice(0);
       commitOutcomes.splice(0, commitOutcomes.length, ...nextCommitOutcomes);
       responseIndex = 0;
@@ -79,6 +81,9 @@ const firestore = vi.hoisted(() => {
     async setDoc(...arguments_: readonly unknown[]): Promise<void> {
       setDocCalls.push([...arguments_]);
     },
+    async deleteDoc(reference: MockDocumentReference): Promise<void> {
+      deletedDocuments.push(reference);
+    },
     serverTimestamp(): string {
       return "server-timestamp";
     },
@@ -100,6 +105,7 @@ const firestore = vi.hoisted(() => {
     collectionPaths,
     queryConstraints,
     committedBatches,
+    deletedDocuments,
     setDocCalls
   };
 });
@@ -108,8 +114,10 @@ vi.mock("./firebase", () => ({ db: { name: "activity-store-test" } }));
 vi.mock("firebase/firestore", () => firestore);
 
 const {
+  createSession,
   InvalidDeleteBatchMaximumError,
   UnsafeStudentTextError,
+  deleteArchivedSession,
   deleteParticipantHistory,
   deleteSessionHistory,
   saveParticipant,
@@ -143,6 +151,26 @@ function helpRequestPaths(count: number): readonly string[] {
 
 beforeEach(() => {
   firestore.reset([]);
+});
+
+describe("새 수업 열기", () => {
+  it("새 수업에는 추측하기 어려운 id와 활성 상태를 저장한다", async () => {
+    // Given: 새로운 수업을 시작할 운영자
+    const randomUuid = vi.spyOn(crypto, "randomUUID").mockReturnValue("53d41958-f6b5-4dd6-a08d-89e833a6b3d6");
+
+    // When: 새 수업을 열면
+    const sessionId = await createSession();
+
+    // Then: 학생 기록과 분리된 활성 수업 문서가 만들어진다
+    expect(sessionId).toBe("session-53d41958-f6b5-4dd6-a08d-89e833a6b3d6");
+    expect(firestore.setDocCalls).toEqual([
+      [
+        { path: "sessions/session-53d41958-f6b5-4dd6-a08d-89e833a6b3d6" },
+        { state: "active", openedAt: "server-timestamp" }
+      ]
+    ]);
+    randomUuid.mockRestore();
+  });
 });
 
 describe("삭제 배치 분할", () => {
@@ -275,8 +303,8 @@ describe("학생 기록 저장 경계", () => {
   });
 });
 
-describe("세션 기록 삭제", () => {
-  it("세션을 먼저 닫고 네 하위 컬렉션 기록을 함께 선택한다", async () => {
+describe("수업 보관", () => {
+  it("학생 기록을 지운 뒤에만 수업 메타데이터를 보관 상태로 남긴다", async () => {
     // Given: 세션 안의 참여자·도움 요청·응원 문서
     firestore.reset([
       snapshot(["sessions/session-1/participants/participant-1"]),
@@ -294,7 +322,18 @@ describe("세션 기록 삭제", () => {
       "sessions/session-1/cheers",
       "sessions/session-1/deletedParticipants"
     ]);
-    expect(firestore.setDocCalls[0]?.[0]).toEqual({ path: "sessions/session-1" });
+    expect(firestore.setDocCalls).toEqual([
+      [
+        { path: "sessions/session-1" },
+        { state: "archiving", archivingAt: "server-timestamp" },
+        { merge: true }
+      ],
+      [
+        { path: "sessions/session-1" },
+        { state: "archived", archivedAt: "server-timestamp" },
+        { merge: true }
+      ]
+    ]);
     expect(firestore.committedBatches).toEqual([
       [
         { path: "sessions/session-1/participants/participant-1" },
@@ -303,5 +342,60 @@ describe("세션 기록 삭제", () => {
         { path: "sessions/session-1/deletedParticipants/owner-uid" }
       ]
     ]);
+  });
+
+  it("삭제가 실패하면 수업을 보관하지 않고 정리 중 상태로 남긴다", async () => {
+    const commitError = new MockFirestoreSetupError("Delete batch failed.");
+    firestore.reset([
+      snapshot(["sessions/session-1/participants/participant-1"]),
+      snapshot([]),
+      snapshot([]),
+      snapshot([])
+    ], [commitError]);
+
+    await expect(deleteSessionHistory("session-1")).rejects.toBe(commitError);
+
+    expect(firestore.setDocCalls).toEqual([
+      [
+        { path: "sessions/session-1" },
+        { state: "archiving", archivingAt: "server-timestamp" },
+        { merge: true }
+      ]
+    ]);
+  });
+});
+
+describe("보관 수업 삭제", () => {
+  it("혹시 남아 있는 하위 기록까지 지운 뒤 보관 수업을 완전히 삭제한다", async () => {
+    const archivedSession: ClassSession = {
+      id: "session-1",
+      state: "archived",
+      openedAtMs: 1,
+      archivedAtMs: 2
+    };
+    firestore.reset([
+      snapshot(["sessions/session-1/participants/participant-1"]),
+      snapshot(["sessions/session-1/helpRequests/request-1"]),
+      snapshot(["sessions/session-1/cheers/cheer-1"]),
+      snapshot(["sessions/session-1/deletedParticipants/owner-uid"])
+    ]);
+
+    await deleteArchivedSession(archivedSession);
+
+    expect(firestore.collectionPaths).toEqual([
+      "sessions/session-1/participants",
+      "sessions/session-1/helpRequests",
+      "sessions/session-1/cheers",
+      "sessions/session-1/deletedParticipants"
+    ]);
+    expect(firestore.committedBatches).toEqual([
+      [
+        { path: "sessions/session-1/participants/participant-1" },
+        { path: "sessions/session-1/helpRequests/request-1" },
+        { path: "sessions/session-1/cheers/cheer-1" },
+        { path: "sessions/session-1/deletedParticipants/owner-uid" }
+      ]
+    ]);
+    expect(firestore.deletedDocuments).toEqual([{ path: "sessions/session-1" }]);
   });
 });

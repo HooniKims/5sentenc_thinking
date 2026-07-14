@@ -19,6 +19,7 @@
     "hono": "latest",
     "jose": "^6.2.3",
     "ky": "latest",
+    "qrcode.react": "^4.2.0",
     "react": "latest",
     "react-dom": "latest",
     "three": "^0.185.1",

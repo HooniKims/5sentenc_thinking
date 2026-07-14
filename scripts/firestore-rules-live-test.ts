@@ -97,6 +97,7 @@ const teacherDb = getFirestore(teacherApp);
 const studentDb = getFirestore(studentApp);
 const sessionId = `rules-probe-${crypto.randomUUID()}`;
 const sessionRef = doc(teacherDb, "sessions", sessionId);
+const studentSessionRef = doc(studentDb, "sessions", sessionId);
 const participantRef = doc(studentDb, "sessions", sessionId, "participants", student.uid);
 const squattedParticipantRef = doc(studentDb, "sessions", sessionId, "participants", "another-student");
 const helpRequestRef = doc(studentDb, "sessions", sessionId, "helpRequests", `${student.uid}-1`);
@@ -171,6 +172,10 @@ try {
     "진행자의 임시 세션 생성"
   );
   await expectAllowed(
+    () => getDoc(studentSessionRef),
+    "익명 학생의 활성 수업 연결 확인"
+  );
+  await expectAllowed(
     () => setDoc(participantRef, {
       ownerUid: student.uid,
       nickname: "규칙확인",
@@ -180,6 +185,10 @@ try {
       updatedAt: serverTimestamp()
     }),
     "익명 학생의 자기 participant 생성"
+  );
+  await expectAllowed(
+    () => getDoc(participantRef),
+    "익명 학생의 활성 수업 자기 participant 조회"
   );
   await expectAllowed(
     () => setDoc(helpRequestRef, {
@@ -261,8 +270,24 @@ try {
   );
 
   await expectAllowed(
-    () => setDoc(sessionRef, { state: "closed" }, { merge: true }),
-    "진행자의 임시 세션 닫기"
+    () => setDoc(sessionRef, { state: "archiving", archivingAt: serverTimestamp() }, { merge: true }),
+    "진행자의 임시 수업 정리 시작"
+  );
+  await expectPermissionDenied(
+    () => getDoc(studentSessionRef),
+    "정리 중 수업 연결 확인"
+  );
+  await expectPermissionDenied(
+    () => getDoc(participantRef),
+    "정리 중 수업 자기 participant 조회"
+  );
+  await expectAllowed(
+    () => setDoc(sessionRef, { state: "archived", archivedAt: serverTimestamp() }, { merge: true }),
+    "진행자의 임시 수업 보관"
+  );
+  await expectPermissionDenied(
+    () => getDoc(participantRef),
+    "보관한 수업 자기 participant 조회"
   );
   await expectPermissionDenied(
     () => setDoc(participantRef, {
@@ -273,7 +298,7 @@ try {
       status: "writing",
       updatedAt: serverTimestamp()
     }),
-    "닫힌 세션에 익명 학생 기록 다시 쓰기"
+    "보관한 수업에 익명 학생 기록 다시 쓰기"
   );
 
   await expectAllowed(

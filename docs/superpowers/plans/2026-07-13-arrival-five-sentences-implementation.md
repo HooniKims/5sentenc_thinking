@@ -1,8 +1,10 @@
 # 여기에 어떻게 오셨어요? 구현 계획
 
+> **폐기된 역사 기록:** 아래의 Architecture, Task, 코드 블록은 현재 구현 지시가 아닙니다. 현재 동작과 안전 경계는 `2026-07-13-sequential-writing-and-dashboard-deletion-design.md`와 `DESIGN.md`를 기준으로 합니다. 현재 앱은 Hono 서버·AI 응원 생성·학생 원문 전송을 사용하지 않습니다.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 중학생이 한 문장을 다섯 문장으로 넓혀 쓰고, 교사가 실시간으로 도움 요청과 응원을 살필 수 있는 수업용 웹 앱을 만든다.
+**Goal:** 중학생이 한 문장 생각을 두·세·네·다섯 문장으로 다시 구성하며 사고를 넓히고, 교사가 실시간으로 도움 요청과 현재 생각을 살필 수 있는 수업용 웹 앱을 만든다.
 
 **Architecture:** React 클라이언트는 Firebase 익명 인증과 Firestore 실시간 구독으로 학생·교사 화면을 연결한다. Hono API는 Firebase ID 토큰을 확인한 뒤 Upstage Solar Pro 3에 도움 질문과 교사용 응원 초안만 요청한다. Firestore 보안 규칙은 학생을 자기 문서로 제한하고, `teachers/{uid}` 문서가 있는 교사만 대시보드와 세션 제어를 쓸 수 있게 한다.
 
@@ -23,7 +25,7 @@
 | `src/lib/nickname.ts` | 랜덤 닉네임 생성과 닉네임 정리 |
 | `src/components/StudentActivity.tsx` | QR로 접속한 학생의 1~5문장 작성 화면 |
 | `src/components/TeacherDashboard.tsx` | 실시간 문장 카드, 도움 요청, 응원 전송 화면 |
-| `src/components/CharacterGuide.tsx` | 캐릭터 포즈와 질문·응원 말풍선 |
+| `src/components/Robot3D.tsx` | 디디의 3D 제스처와 고정 무대 |
 | `server/index.mjs` | 정적 앱과 AI API를 제공하는 Express 서버 |
 | `server/firebaseAdmin.mjs` | Firebase ID 토큰 검증과 Admin Firestore 접근 |
 | `server/solar.mjs` | Solar Pro 3 프롬프트와 도움 질문·응원 초안 생성 |
@@ -39,7 +41,7 @@
 
 - [ ] **Step 1: 프로젝트 전용 디자인 시스템을 작성한다.**
 
-콘페스타의 보라색 무대, 라임 리본, 바닐라 패널, Paperlogy 글꼴, AI MC 캐릭터 포즈를 토큰·컴포넌트·상태·반응형 규칙으로 기록한다. 학생 입력 문장의 흰색 글자와 0.65px 검은 외곽선, 캐릭터를 가리지 않는 상단 말풍선, 도움·응원·오류 상태를 명시한다.
+콘페스타의 보라색 무대, 라임 리본, 바닐라 패널, Paperlogy 글꼴, 디디의 3D 제스처를 토큰·컴포넌트·상태·반응형 규칙으로 기록한다. 학생 입력 문장의 흰색 글자와 0.65px 검은 외곽선, 캐릭터를 가리지 않는 상단 말풍선, 도움·응원·오류 상태를 명시한다.
 
 - [ ] **Step 2: 제품 화면보다 먼저 프리미티브를 검증한다.**
 
@@ -186,9 +188,6 @@ VITE_FIREBASE_PROJECT_ID=
 VITE_FIREBASE_STORAGE_BUCKET=
 VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
-FIREBASE_ADMIN_PROJECT_ID=
-FIREBASE_ADMIN_CLIENT_EMAIL=
-FIREBASE_ADMIN_PRIVATE_KEY=
 ```
 
 Firebase Console에서 Anonymous와 Email/Password 로그인을 켠다. 교사 계정을 만든 뒤 Firestore의 `teachers/{uid}` 문서에 `{ active: true }`를 저장한다. 이 단계는 사용자가 Firebase 프로젝트를 만든 뒤 실행한다.
@@ -274,7 +273,7 @@ expect(screen.getByText("1 / 5")).toBeInTheDocument();
 
 - [ ] **Step 3: 도움 말풍선과 교사 응원 말풍선을 구현한다.**
 
-`CharacterGuide`는 `mode: "thinking" | "help" | "cheer"`를 받고, 캐릭터와 분리된 상단 말풍선을 표시한다. 학생 문장에는 `color: #fff`, `-webkit-text-stroke: 0.65px #13091f`, `paint-order: stroke fill`을 적용한다.
+`Robot3D`는 `gesture: "idle" | "thinking" | "help" | "cheer" | "complete"`를 받고, 캐릭터와 분리된 상단 말풍선을 표시한다. 학생 문장에는 `color: #fff`, `-webkit-text-stroke: 0.65px #13091f`, `paint-order: stroke fill`을 적용한다.
 
 - [ ] **Step 4: 학생 화면 테스트를 실행한다.**
 

@@ -1,18 +1,32 @@
 import ky from "ky";
 import { z } from "zod";
-import { isSingleThinkingQuestion, type HelpGuidanceInput } from "./helpGuidance";
+import { contextualHelpQuestion, type HelpGuidanceInput } from "./helpGuidance";
 import { getStudentIdToken } from "./firebase";
 
-const responseSchema = z.object({ question: z.string().min(1).max(120) });
+const responseSchema = z.object({ variant: z.enum(["0", "1", "2"]) });
 
 class InvalidGuidanceResponseError extends Error {
   constructor() {
-    super("The guidance response must be one safe Korean thinking question.");
+    super("The guidance response must select one safe thinking direction.");
     this.name = "InvalidGuidanceResponseError";
   }
 }
 
-export async function requestGuidanceQuestion(input: HelpGuidanceInput): Promise<string> {
+function guidanceVariantFrom(value: "0" | "1" | "2"): 0 | 1 | 2 {
+  switch (value) {
+    case "0":
+      return 0;
+    case "1":
+      return 1;
+    case "2":
+      return 2;
+  }
+}
+
+export async function requestGuidanceQuestion(
+  input: HelpGuidanceInput,
+  sentences: readonly string[]
+): Promise<string> {
   const token = await getStudentIdToken();
   const response = await ky
     .post("/api/help", {
@@ -22,10 +36,10 @@ export async function requestGuidanceQuestion(input: HelpGuidanceInput): Promise
       timeout: 12_000
     })
     .json<unknown>();
-  const question = responseSchema.parse(response).question;
-  if (!isSingleThinkingQuestion(question)) {
+  const parsed = responseSchema.safeParse(response);
+  if (!parsed.success) {
     throw new InvalidGuidanceResponseError();
   }
 
-  return question;
+  return contextualHelpQuestion(input.step, sentences, guidanceVariantFrom(parsed.data.variant));
 }

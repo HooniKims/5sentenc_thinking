@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, setDoc, where, writeBatch } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, setDoc, where, writeBatch } from "firebase/firestore";
 import type { DocumentReference, FirestoreError, Unsubscribe } from "firebase/firestore";
 import type { ParticipantStatus } from "./activity";
 import { db } from "./firebase";
@@ -18,7 +18,24 @@ export class InvalidDeleteBatchMaximumError extends Error {
 
 export type DeleteProgress = (completed: number, total: number) => void;
 
-export type SessionReadiness = "active" | "closed";
+export type SessionState = "active" | "archiving" | "archived";
+
+export interface ClassSession {
+  readonly id: string;
+  readonly state: SessionState;
+  readonly openedAtMs: number;
+  readonly archivedAtMs: number | null;
+}
+
+export class ArchivedSessionRequiredError extends Error {
+  readonly sessionId: string;
+
+  constructor(sessionId: string) {
+    super("Only archived sessions can be deleted permanently.");
+    this.name = "ArchivedSessionRequiredError";
+    this.sessionId = sessionId;
+  }
+}
 
 export class UnsafeStudentTextError extends Error {
   constructor() {
@@ -77,23 +94,20 @@ function assertSafeStudentSentences(sentences: readonly string[]): void {
   }
 }
 
-export async function prepareSession(sessionId: string): Promise<SessionReadiness> {
+export async function createSession(): Promise<string> {
+  const sessionId = `session-${crypto.randomUUID()}`;
+  await setDoc(doc(db, "sessions", sessionId), {
+    state: "active",
+    openedAt: serverTimestamp()
+  });
+  return sessionId;
+}
+
+export async function sessionIsActive(sessionId: string): Promise<boolean> {
   const sessionReference = doc(db, "sessions", sessionId);
   const snapshot = await getDoc(sessionReference);
   const data = snapshot.data();
-  if (isRecord(data) && data["state"] === "closed") {
-    return "closed";
-  }
-
-  await setDoc(
-    sessionReference,
-    {
-      state: "active",
-      openedAt: serverTimestamp()
-    },
-    { merge: true }
-  );
-  return "active";
+  return snapshot.exists() && isRecord(data) && data["state"] === "active";
 }
 
 export async function deleteParticipantHistory(
@@ -126,8 +140,8 @@ export async function deleteSessionHistory(sessionId: string, onBatchComplete?: 
   await setDoc(
     sessionReference,
     {
-      state: "closed",
-      closedAt: serverTimestamp()
+      state: "archiving",
+      archivingAt: serverTimestamp()
     },
     { merge: true }
   );
@@ -145,6 +159,40 @@ export async function deleteSessionHistory(sessionId: string, onBatchComplete?: 
   ];
 
   await deleteDocumentReferences(references, onBatchComplete);
+  await setDoc(
+    sessionReference,
+    {
+      state: "archived",
+      archivedAt: serverTimestamp()
+    },
+    { merge: true }
+  );
+}
+
+export async function deleteArchivedSession(
+  session: ClassSession,
+  onBatchComplete?: DeleteProgress
+): Promise<void> {
+  if (session.state !== "archived") {
+    throw new ArchivedSessionRequiredError(session.id);
+  }
+
+  const sessionReference = doc(db, "sessions", session.id);
+  const [participants, helpRequests, cheers, deletedParticipants] = await Promise.all([
+    getDocs(collection(db, "sessions", session.id, "participants")),
+    getDocs(collection(db, "sessions", session.id, "helpRequests")),
+    getDocs(collection(db, "sessions", session.id, "cheers")),
+    getDocs(collection(db, "sessions", session.id, "deletedParticipants"))
+  ]);
+  const references: readonly DocumentReference[] = [
+    ...participants.docs.map((participant) => participant.ref),
+    ...helpRequests.docs.map((request) => request.ref),
+    ...cheers.docs.map((cheer) => cheer.ref),
+    ...deletedParticipants.docs.map((deletedParticipant) => deletedParticipant.ref)
+  ];
+
+  await deleteDocumentReferences(references, onBatchComplete);
+  await deleteDoc(sessionReference);
 }
 
 function isParticipantStatus(value: unknown): value is ParticipantStatus {
@@ -193,6 +241,41 @@ function participantFromSnapshot(id: string, data: unknown): SessionParticipant 
     status: data["status"],
     updatedAtMs: numberFromTimestamp(data["updatedAt"])
   };
+}
+
+function sessionFromSnapshot(id: string, data: unknown): ClassSession | null {
+  if (!isRecord(data)) {
+    return null;
+  }
+
+  if (data["state"] === "active") {
+    return {
+      id,
+      state: "active",
+      openedAtMs: numberFromTimestamp(data["openedAt"]),
+      archivedAtMs: null
+    };
+  }
+
+  if (data["state"] === "archiving") {
+    return {
+      id,
+      state: "archiving",
+      openedAtMs: numberFromTimestamp(data["openedAt"]),
+      archivedAtMs: null
+    };
+  }
+
+  if (data["state"] === "archived" || data["state"] === "closed") {
+    return {
+      id,
+      state: "archived",
+      openedAtMs: numberFromTimestamp(data["openedAt"]),
+      archivedAtMs: numberFromTimestamp(data["archivedAt"] ?? data["closedAt"])
+    };
+  }
+
+  return null;
 }
 
 export async function saveParticipant(
@@ -261,6 +344,24 @@ export function subscribeToParticipants(
         return parsed ? [parsed] : [];
       });
       onChange(participants);
+    },
+    onError
+  );
+}
+
+export function subscribeToSessions(
+  onChange: (sessions: readonly ClassSession[], fromCache: boolean) => void,
+  onError: (error: FirestoreError) => void
+): Unsubscribe {
+  return onSnapshot(
+    collection(db, "sessions"),
+    { includeMetadataChanges: true },
+    (snapshot) => {
+      const sessions = snapshot.docs
+        .map((session) => sessionFromSnapshot(session.id, session.data()))
+        .filter((session): session is ClassSession => session !== null)
+        .sort((left, right) => right.openedAtMs - left.openedAtMs);
+      onChange(sessions, snapshot.metadata.fromCache);
     },
     onError
   );

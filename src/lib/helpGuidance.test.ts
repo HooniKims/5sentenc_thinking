@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildGuidancePrompt,
   containsPersonalInformation,
+  contextualHelpQuestion,
   createHelpGuidanceInput,
   fallbackHelpQuestion,
   isSingleThinkingQuestion,
@@ -46,6 +47,22 @@ describe("생각 확장 도움 질문", () => {
     expect(fallbackHelpQuestion(2, 0)).not.toBe(fallbackHelpQuestion(2, 1));
     expect(fallbackHelpQuestion(4, 1)).not.toContain("누구와 함께");
     expect(questionForVariant(2, 0)).toBe(fallbackHelpQuestion(2, 0));
+  });
+
+  it("확정한 첫 문장과 직전 문장을 기기 안에서 이어 다음 생각을 묻는다", () => {
+    const secondSentenceQuestion = contextualHelpQuestion(2, ["버스를 타고 왔어요."], 0);
+    const walkingQuestion = contextualHelpQuestion(2, ["학교까지 걸어왔어요."], 0);
+    const thirdSentenceQuestion = contextualHelpQuestion(
+      3,
+      ["버스를 타고 왔어요.", "창밖에 비가 내렸어요."],
+      1
+    );
+
+    expect(secondSentenceQuestion).toBe("“버스를 타고 왔어요” 다음에는 버스 안이나 창밖에서 가장 먼저 보인 것은 무엇이었나요?");
+    expect(walkingQuestion).toBe("“학교까지 걸어왔어요” 다음에는 걸어온 길에서 가장 먼저 보인 것은 무엇이었나요?");
+    expect(thirdSentenceQuestion).toBe("“창밖에 비가 내렸어요” 때 들린 소리나 몸의 느낌은 무엇이었나요?");
+    expect(isSingleThinkingQuestion(secondSentenceQuestion)).toBe(true);
+    expect(isSingleThinkingQuestion(thirdSentenceQuestion)).toBe(true);
   });
 
   it("답변이나 여러 질문이 섞인 AI 응답은 학생에게 보여 주지 않는다", () => {

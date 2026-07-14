@@ -1,7 +1,7 @@
 import ky from "ky";
 import { z } from "zod";
 import { verifyStudentToken } from "../server/firebaseAuth.js";
-import { buildGuidancePrompt, questionForVariant } from "../server/helpGuidance.js";
+import { buildGuidancePrompt } from "../server/helpGuidance.js";
 
 const detailKinds = ["scene", "sense", "action", "change"] as const;
 const requestSchema = z
@@ -149,7 +149,7 @@ export default async function handler(request: VercelRequestLike, response: Verc
       return;
     }
 
-    response.status(200).json({ question: questionForVariant(parsed.data.step, variant) });
+    response.status(200).json({ variant: String(variant) });
   } catch (error) {
     console.error("Upstage guide request failed", error instanceof Error ? error.message : "unknown_error");
     response.status(502).json({ error: "guide_unavailable" });

@@ -5,7 +5,11 @@
 body { margin: 0; min-width: 320px; }
 button, textarea { font: inherit; }
 .student-shell { display: grid; min-height: 100dvh; place-items: center; padding: 24px; overflow-x: clip; background: radial-gradient(circle at 10% 8%, #ff00a955, transparent 30%), radial-gradient(circle at 90% 90%, #c8ff3d66, transparent 28%), oklch(0.42 0.28 295); }
+.policy-links { display: flex; flex-wrap: wrap; gap: 10px; }
+.policy-links a { color: inherit; font-size: .76rem; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+.policy-links a[aria-current="page"] { text-decoration-thickness: 2px; }
 .student-card { position: relative; width: min(100%, 540px); min-height: 680px; overflow: hidden; padding: 28px; border-radius: 28px; color: #fff; box-shadow: 0 20px 40px -16px #1314288c; }
+.student-card > .policy-links { position: absolute; z-index: 5; top: 24px; right: 24px; }
 .student-card:not(.completion-card) { display: block; height: min(680px, calc(100dvh - 48px)); min-height: 0; max-height: none; overflow: clip; }
 .student-card.student-card--link-needed { display: grid; align-content: center; min-height: min(420px, calc(100dvh - 48px)); }
 .eyebrow { margin: 0; font-size: .9rem; font-weight: 800; }
@@ -165,6 +169,30 @@ button, textarea { font: inherit; }
   .guide-character, .guide-character-motion, .sentence-history__backdrop, .sentence-history__dialog, .magic-button, .magic-effect, .magic-effect::after, .magic-effect span, .magic-result { transition: none; animation: none; }
 }
 .admin-shell { min-height: 100dvh; padding: 32px; color: var(--ink); background: var(--page); }
+.legal-page { display: grid; min-height: 100dvh; grid-template-rows: 1fr auto; color: var(--ink); background: var(--page); }
+.legal-main { width: min(100%, 880px); margin: 0 auto; padding: 44px 24px 56px; }
+.legal-back { display: inline-flex; min-height: 44px; align-items: center; color: var(--grape); font-weight: 800; text-underline-offset: 4px; }
+.legal-document { margin-top: 24px; padding: clamp(24px, 5vw, 48px); border: 1px solid var(--border); border-radius: 28px; background: var(--vanilla); box-shadow: var(--shadow-soft); }
+.legal-document h1 { margin: 10px 0 0; color: var(--grape); font-size: clamp(2rem, 7vw, 3.2rem); line-height: 1.1; }
+.legal-document h2 { margin: 36px 0 10px; color: var(--grape); font-size: clamp(1.1rem, 3vw, 1.35rem); line-height: 1.4; }
+.legal-document p { margin: 0; color: var(--muted); line-height: 1.8; word-break: keep-all; overflow-wrap: break-word; }
+.legal-document h2 + p, .legal-document p + p { margin-top: 10px; }
+.legal-document .eyebrow { color: var(--pink); }
+.legal-document .legal-effective-date { margin-top: 12px; font-size: .9rem; font-weight: 800; }
+.legal-document .legal-table-hint { margin-top: 10px; font-size: .82rem; }
+.legal-table-wrap { margin-top: 12px; overflow-x: auto; border: 1px solid var(--border); border-radius: 16px; }
+.legal-table-wrap table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: .88rem; }
+.legal-table-wrap th, .legal-table-wrap td { padding: 14px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; line-height: 1.6; }
+.legal-table-wrap th { color: var(--grape); background: color-mix(in srgb, var(--grape) 7%, var(--vanilla)); }
+.legal-table-wrap tr:last-child td { border-bottom: 0; }
+.legal-document .legal-note { margin-top: 14px; padding: 14px; border-radius: 14px; color: var(--ink); background: color-mix(in srgb, var(--lime) 24%, var(--vanilla)); font-size: .9rem; font-weight: 800; }
+.site-footer { padding: 22px 24px; border-top: 1px solid var(--border); color: var(--muted); background: var(--vanilla); }
+.footer-inner { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; width: min(100%, 1120px); margin: 0 auto; align-items: center; }
+.footer-brand, .footer-contact { margin: 0; font-size: .82rem; font-weight: 800; }
+.footer-contact { text-align: right; }
+.site-footer .policy-links { justify-content: center; }
+.site-footer .policy-links a { color: var(--grape); }
+@media (max-width: 640px) { .student-card > .policy-links { top: 18px; right: 16px; } .student-card > .eyebrow { max-width: calc(100% - 148px); } .legal-main { padding: 24px 12px 36px; } .legal-document { margin-top: 12px; border-radius: 22px; } .footer-inner { grid-template-columns: 1fr; justify-items: center; text-align: center; } .footer-contact { text-align: center; } }
 .admin-shell--login { display: grid; place-items: center; background: radial-gradient(circle at 10% 10%, color-mix(in srgb, var(--lime) 46%, transparent), transparent 28%), radial-gradient(circle at 90% 88%, color-mix(in srgb, var(--pink) 25%, transparent), transparent 32%), var(--page); }
 .admin-login, .admin-dashboard { width: min(100%, 1080px); }
 .admin-login { display: grid; gap: 16px; padding: 32px; border: 1px solid var(--border); border-radius: 28px; background: var(--vanilla); box-shadow: var(--shadow-pop); }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CompletionExperience } from "./components/CompletionExperience";
 import { LazyRobot3D } from "./components/LazyRobot3D";
+import { PolicyLinks } from "./components/PolicyLinks";
 import { SentenceHistory } from "./components/SentenceHistory";
 import { createHelpRequest, saveParticipant, sessionIsActive } from "./lib/activityStore";
 import { ensureStudentIdentity } from "./lib/firebase";
@@ -347,6 +348,7 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
     <main className="student-shell">
       <section className="student-card" aria-label="다섯 문장 활동">
         <p className="eyebrow">{nickname} · 길찾기 탐험 · {step} / 5</p>
+        <PolicyLinks />
         <h1>여기에 어떻게 오셨어요?</h1>
         <p className="guide-copy">{guideCopy}</p>
         {showGuideBubble ? (

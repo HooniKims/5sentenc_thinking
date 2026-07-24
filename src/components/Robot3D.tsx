@@ -13,13 +13,14 @@ const MODEL_ROTATION_Y = 0;
 // .011=응원, .012=동의, .013=댄스
 // 같은 상황에서도 매번 같은 동작만 반복하지 않도록 상황별 동작 풀에서 골라 재생한다.
 const GESTURE_CLIPS = {
-  idle: ["NlaTrack.003", "NlaTrack.006", "NlaTrack.004"],
-  thinking: ["NlaTrack.004", "NlaTrack.003", "NlaTrack.006"],
+  // 설명형 캐릭터 — 잔잔한 동작만. 큰 동작(점프·댄스·준비운동·달리기)은 얼굴 분리와 과한 움직임을 유발해 제외한다.
+  idle: ["NlaTrack.003", "NlaTrack.006"],
+  thinking: ["NlaTrack.004", "NlaTrack.003"],
   help: ["NlaTrack.012", "NlaTrack.009"],
-  speaking: ["NlaTrack.012", "NlaTrack.009", "NlaTrack.010"],
+  speaking: ["NlaTrack.012", "NlaTrack.009"],
   moving: ["NlaTrack.001"],
   cheer: ["NlaTrack.007"],
-  complete: ["NlaTrack.011", "NlaTrack.002", "NlaTrack.013", "NlaTrack.005", "NlaTrack"]
+  complete: ["NlaTrack.011", "NlaTrack.002", "NlaTrack"]
 } as const satisfies Record<string, readonly string[]>;
 
 const CLIP_ROTATION_MINIMUM_MS = 9_000;

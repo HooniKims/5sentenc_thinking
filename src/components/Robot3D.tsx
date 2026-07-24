@@ -13,14 +13,15 @@ const MODEL_ROTATION_Y = 0;
 // .011=응원, .012=동의, .013=댄스
 // 같은 상황에서도 매번 같은 동작만 반복하지 않도록 상황별 동작 풀에서 골라 재생한다.
 const GESTURE_CLIPS = {
-  // 설명형 캐릭터 — 잔잔한 동작만. 큰 동작(점프·댄스·준비운동·달리기)은 얼굴 분리와 과한 움직임을 유발해 제외한다.
-  idle: ["NlaTrack.003", "NlaTrack.006"],
-  thinking: ["NlaTrack.004", "NlaTrack.003"],
-  help: ["NlaTrack.012", "NlaTrack.009"],
-  speaking: ["NlaTrack.012", "NlaTrack.009"],
-  moving: ["NlaTrack.001"],
-  cheer: ["NlaTrack.007"],
-  complete: ["NlaTrack.011", "NlaTrack.002", "NlaTrack"]
+  // v4 통통 몸체, 14클립. 설명형 잔잔한 동작만 상호작용에 쓰고, 크게 숙이는 동작(#0·#10·#12)은 완성 축하에만.
+  // #5=둘러보기(궁금), #9=팔짱끼기(생각), #3=손을 얼굴로(갸웃), #8=손 제스처, #2/#4/#6/#7/#13=차분한 대기
+  idle: ["NlaTrack.004", "NlaTrack.002", "NlaTrack.006"],
+  thinking: ["NlaTrack.005", "NlaTrack.009", "NlaTrack.003"],
+  help: ["NlaTrack.011", "NlaTrack.008"],
+  speaking: ["NlaTrack.011", "NlaTrack.008"],
+  moving: ["NlaTrack.002"],
+  cheer: ["NlaTrack.008"],
+  complete: ["NlaTrack.013", "NlaTrack", "NlaTrack.010"]
 } as const satisfies Record<string, readonly string[]>;
 
 const CLIP_ROTATION_MINIMUM_MS = 9_000;
@@ -70,7 +71,7 @@ const faceMoodByGesture: Record<RobotGesture, DidiFaceMood> = {
 };
 
 // 새 디디가 원본보다 말라 보여 좌우 폭만 살짝 키운다.
-const BODY_WIDEN = 1.12;
+const BODY_WIDEN = 1.0;
 
 const FACE_PLANE = {
   width: 0.37,

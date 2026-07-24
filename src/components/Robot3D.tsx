@@ -13,7 +13,7 @@ const MODEL_ROTATION_Y = 0;
 // .011=응원, .012=동의, .013=댄스
 // 같은 상황에서도 매번 같은 동작만 반복하지 않도록 상황별 동작 풀에서 골라 재생한다.
 const GESTURE_CLIPS = {
-  idle: ["NlaTrack.003", "NlaTrack.006", "NlaTrack.004", "NlaTrack.008"],
+  idle: ["NlaTrack.003", "NlaTrack.006", "NlaTrack.004"],
   thinking: ["NlaTrack.004", "NlaTrack.003", "NlaTrack.006"],
   help: ["NlaTrack.012", "NlaTrack.009"],
   speaking: ["NlaTrack.012", "NlaTrack.009", "NlaTrack.010"],
@@ -74,11 +74,11 @@ const BODY_WIDEN = 1.12;
 const FACE_PLANE = {
   width: 0.37,
   height: 0.37 * (436 / 512),
-  position: new THREE.Vector3(0, 0.64, 0.283),
+  position: new THREE.Vector3(0, 0.64, 0.262),
   tiltX: -0.05,
   // 머리 스크린이 볼록 곡면이라 얼굴도 같은 곡률로 휘어 밀착시킨다.
-  curveRadiusX: 0.34,
-  curveRadiusY: 0.55
+  curveRadiusX: 0.3,
+  curveRadiusY: 0.5
 };
 
 export function curvedFacePlaneGeometry(): THREE.PlaneGeometry {
@@ -286,8 +286,8 @@ function RobotModel({ gesture, lipFrame }: { readonly gesture: RobotGesture; rea
   return (
     <group ref={group}>
       <primitive object={scene} />
-      <mesh ref={facePlane} rotation={[FACE_PLANE.tiltX, 0, 0]} geometry={faceGeometry}>
-        <meshBasicMaterial ref={faceMaterial} map={textures.neutral} transparent toneMapped={false} depthWrite={false} />
+      <mesh ref={facePlane} rotation={[FACE_PLANE.tiltX, 0, 0]} geometry={faceGeometry} renderOrder={2}>
+        <meshBasicMaterial ref={faceMaterial} map={textures.neutral} transparent toneMapped={false} depthWrite={false} depthTest={false} />
       </mesh>
     </group>
   );
@@ -297,7 +297,7 @@ export function Robot3D({ gesture, lipFrame = 0 }: { readonly gesture: RobotGest
   return (
     <div className="robot-canvas" data-robot-3d="true" data-gesture={gesture} data-lip-frame={lipFrame}>
       <Canvas
-        camera={{ position: [0, 0.6, 1.7], fov: 33 }}
+        camera={{ position: [0, 0.58, 1.82], fov: 33 }}
         dpr={[1.5, 2]}
         gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true, powerPreference: "high-performance" }}
         onCreated={({ camera }) => camera.lookAt(0, 0.52, 0)}

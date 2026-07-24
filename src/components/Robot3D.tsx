@@ -15,7 +15,7 @@ const MODEL_ROTATION_Y = 0;
 const GESTURE_CLIPS = {
   // 설명형 캐릭터 — 잔잔한 동작만. 큰 동작(점프·댄스·준비운동·달리기)은 얼굴 분리와 과한 움직임을 유발해 제외한다.
   idle: ["NlaTrack.003", "NlaTrack.006"],
-  thinking: ["NlaTrack.004", "NlaTrack.003"],
+  thinking: ["NlaTrack.003", "NlaTrack.006"],
   help: ["NlaTrack.012", "NlaTrack.009"],
   speaking: ["NlaTrack.012", "NlaTrack.009"],
   moving: ["NlaTrack.001"],
@@ -75,10 +75,10 @@ const BODY_WIDEN = 1.12;
 const FACE_PLANE = {
   width: 0.37,
   height: 0.37 * (436 / 512),
-  position: new THREE.Vector3(0, 0.64, 0.262),
+  position: new THREE.Vector3(0, 0.64, 0.16),
   tiltX: -0.05,
   // 머리 스크린이 볼록 곡면이라 얼굴도 같은 곡률로 휘어 밀착시킨다.
-  curveRadiusX: 0.3,
+  curveRadiusX: 0.28,
   curveRadiusY: 0.5
 };
 
@@ -95,6 +95,9 @@ export function curvedFacePlaneGeometry(): THREE.PlaneGeometry {
   }
   return geometry;
 }
+
+// 0=원본 회전 유지, 1=완전히 정면 고정. 설명형이라 절반쯤 당겨 고개를 크게 안 돌린다.
+const HEAD_TURN_DAMPING = 0.5;
 
 const BLINK_PERIOD_SECONDS = 3.4;
 const BLINK_DURATION_SECONDS = 0.18;
@@ -209,11 +212,14 @@ function RobotModel({ gesture, lipFrame }: { readonly gesture: RobotGesture; rea
     }
 
     scene.updateMatrixWorld(true);
+    const bone = headBone as THREE.Object3D;
     const desired = new THREE.Matrix4()
       .makeTranslation(FACE_PLANE.position.x, FACE_PLANE.position.y, FACE_PLANE.position.z)
       .multiply(new THREE.Matrix4().makeRotationX(FACE_PLANE.tiltX));
-    const offset = (headBone as THREE.Object3D).matrixWorld.clone().invert().multiply(desired);
-    return { headBone: headBone as THREE.Object3D, offset };
+    const offset = bone.matrixWorld.clone().invert().multiply(desired);
+    // 설명형 캐릭터라 고개를 크게 돌리지 않게 머리 회전을 쉼 자세 쪽으로 감쇠한다.
+    const restQuaternion = bone.quaternion.clone();
+    return { headBone: bone, offset, restQuaternion };
   }, [scene]);
 
   useEffect(() => {
@@ -261,6 +267,11 @@ function RobotModel({ gesture, lipFrame }: { readonly gesture: RobotGesture; rea
       robot.position.y = 0;
       robot.rotation.y = 0;
       robot.scale.set(1, 1, 1);
+    }
+
+    if (faceAnchor) {
+      // 고개를 크게 돌리지 않도록 머리 회전을 쉼 자세 쪽으로 절반쯤 당긴다.
+      faceAnchor.headBone.quaternion.slerp(faceAnchor.restQuaternion, HEAD_TURN_DAMPING);
     }
 
     if (faceAnchor && facePlane.current) {

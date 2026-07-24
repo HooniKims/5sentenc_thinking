@@ -36,6 +36,10 @@ function didiMoveDuration(): number {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : DIDI_MOVE_DURATION_MS;
 }
 
+function isPermissionDenied(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "permission-denied";
+}
+
 function helpVariantFrom(variation: number): 0 | 1 | 2 {
   switch (variation % 3) {
     case 0:
@@ -90,6 +94,8 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
   const [lipFrame, setLipFrame] = useState(0);
   const [ownerUid, setOwnerUid] = useState<string | null>(null);
   const [recordingUnavailable, setRecordingUnavailable] = useState(false);
+  const [joinFailed, setJoinFailed] = useState(false);
+  const [joinAttempt, setJoinAttempt] = useState(0);
   const [nickname] = useState(createNickname);
   const draftTextarea = useRef<HTMLTextAreaElement>(null);
   const helpRequestId = useRef(0);
@@ -160,16 +166,21 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
         }
         setOwnerUid(studentId);
       })
-      .catch(() => {
-        if (active) {
-          setRecordingUnavailable(true);
+      .catch((error: unknown) => {
+        if (!active) {
+          return;
         }
+        if (isPermissionDenied(error)) {
+          setRecordingUnavailable(true);
+          return;
+        }
+        setJoinFailed(true);
       });
 
     return () => {
       active = false;
     };
-  }, [sessionId]);
+  }, [sessionId, joinAttempt]);
 
   useEffect(() => {
     if (recordingUnavailable || !ownerUid || !sessionId) {
@@ -323,6 +334,28 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
           <p className="eyebrow">5문장 길찾기</p>
           <h1 id="session-link-title">수업 링크가 필요해요</h1>
           <p className="guide-copy">진행자가 안내한 QR을 다시 스캔해 주세요. 새 수업마다 참여 링크가 달라져요.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (joinFailed) {
+    return (
+      <main className="student-shell">
+        <section className="student-card student-card--link-needed" aria-labelledby="join-retry-title">
+          <p className="eyebrow">5문장 길찾기</p>
+          <h1 id="join-retry-title">지금은 연결이 어려워요</h1>
+          <p className="guide-copy">접속하는 친구가 많거나 인터넷이 잠시 느려요. 잠깐 기다렸다가 다시 연결해 주세요.</p>
+          <button
+            type="button"
+            className="magic-button"
+            onClick={() => {
+              setJoinFailed(false);
+              setJoinAttempt((attempt) => attempt + 1);
+            }}
+          >
+            다시 연결하기
+          </button>
         </section>
       </main>
     );

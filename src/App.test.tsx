@@ -89,6 +89,32 @@ describe("학생 활동 시작 화면", () => {
     await waitFor(() => expect(help.requestGuidanceQuestion).not.toHaveBeenCalled());
   });
 
+  it("연결이 붐벼 로그인에 실패하면 보관 안내 대신 다시 연결 화면을 보여 준다", async () => {
+    identity.ensureStudentIdentity.mockRejectedValueOnce(
+      Object.assign(new Error("too many attempts"), { code: "auth/too-many-requests" })
+    );
+
+    renderActivity();
+
+    expect(await screen.findByRole("heading", { name: "지금은 연결이 어려워요" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "이 수업은 보관됐어요" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "다시 연결하기" }));
+
+    await waitForSessionConnection();
+    expect(identity.ensureStudentIdentity).toHaveBeenCalledTimes(2);
+  });
+
+  it("수업 조회가 권한 오류로 막히면 보관 안내를 보여 준다", async () => {
+    persistence.sessionIsActive.mockRejectedValueOnce(
+      Object.assign(new Error("denied"), { code: "permission-denied" })
+    );
+
+    renderActivity();
+
+    expect(await screen.findByRole("heading", { name: "이 수업은 보관됐어요" })).toBeInTheDocument();
+  });
+
   it("처음에는 가운데에서 조용히 기다리며 첫 문장 입력칸을 보여 준다", () => {
     renderActivity();
 

@@ -1,0 +1,68 @@
+<!doctype html>
+<!-- 개발 전용 실험 페이지: /didi-lab.html?clip=0&t=1.5 — 클립 식별과 얼굴 평면 위치 조정용. 배포 번들에는 포함되지 않는다. -->
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>didi lab</title>
+<style>body{margin:0;background:#3b1470}#info{position:fixed;top:8px;left:8px;color:#c8ff3d;font:14px monospace;white-space:pre}</style>
+</head>
+<body>
+<div id="info"></div>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+
+const params = new URLSearchParams(location.search);
+const clipIndex = Number(params.get("clip") ?? "0");
+const timeSec = Number(params.get("t") ?? "1");
+const showSkeletonInfo = params.get("bones") === "1";
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(1);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(33, innerWidth / innerHeight, 0.01, 100);
+camera.position.set(0, 0.62, 2.4);
+camera.lookAt(0, 0.5, 0);
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+sun.position.set(3, 5, 2);
+scene.add(sun);
+scene.add(new THREE.HemisphereLight(0xdff3ff, 0x9db6cc, 0.6));
+
+new GLTFLoader().load("/models/didi-confesta.glb", (gltf) => {
+  const model = gltf.scene;
+  model.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  const scale = size.y > 0 ? 1 / size.y : 1;
+  model.scale.setScalar(scale);
+  model.updateMatrixWorld(true);
+  box.setFromObject(model);
+  const center = box.getCenter(new THREE.Vector3());
+  model.position.set(-center.x, -box.min.y, -center.z);
+  scene.add(model);
+
+  const mixer = new THREE.AnimationMixer(model);
+  const clip = gltf.animations[clipIndex];
+  const info = [`clips: ${gltf.animations.map((c, i) => `${i}:${c.name}(${c.duration.toFixed(1)}s)`).join(" ")}`];
+  if (clip) {
+    const action = mixer.clipAction(clip);
+    action.play();
+    mixer.update(timeSec % clip.duration);
+    info.push(`showing clip ${clipIndex} "${clip.name}" @ ${timeSec}s`);
+  }
+  if (showSkeletonInfo) {
+    const bones = [];
+    model.traverse((o) => { if (o.isBone) bones.push(o.name); });
+    info.push(`bones(${bones.length}): ${bones.slice(0, 24).join(",")}`);
+  }
+  document.getElementById("info").textContent = info.join("\n");
+  renderer.render(scene, camera);
+  document.title = "didi-lab-ready";
+});
+</script>
+</body>
+</html>

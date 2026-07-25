@@ -41,6 +41,12 @@ button, textarea { font: inherit; }
 .writing-dock .sentence-field, .writing-dock .student-actions { position: static; right: auto; bottom: auto; left: auto; z-index: auto; margin: 0; }
 .help-button { color: #49107d; background: var(--lime); }
 .next-button { display: grid; flex: 1; place-content: center; gap: 1px; color: #fff; background: var(--pink); line-height: 1.08; }
+.finish-button { width: 100%; min-height: 44px; margin-top: 10px; border: 1px solid var(--lime); border-radius: 999px; padding: 0 16px; color: var(--vanilla); background: transparent; font-weight: 800; font-size: .92rem; }
+.finish-button:focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; }
+.seed-compare { display: grid; gap: 2px; margin: 6px 0 0; padding: 8px 12px; border-left: 3px solid var(--lime); border-radius: 8px; background: #fdf8ff14; }
+.seed-compare__label { color: var(--lime); font-size: .72rem; font-weight: 800; }
+.seed-compare__text { color: var(--vanilla); font-weight: 700; }
+.seed-compare__grow { color: #dcd2f0; font-size: .78rem; }
 .next-button span { display: block; white-space: nowrap; }
 .student-actions button:disabled, .sentence-card button:disabled { opacity: .56; }
 .student-card button:focus-visible, .sentence-field textarea:focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; }

@@ -10,7 +10,7 @@ import { contextualHelpQuestion, createHelpGuidanceInput } from "./lib/helpGuida
 import { createNickname } from "./lib/nickname";
 import { isSingleSentence, replaceSentence } from "./lib/sentences";
 import { requestHelp } from "./lib/activity";
-import { draftValidationMessage, guideCopies, guideQuestions, helpStarterExamples, openingDidiSpeech, stepForSentenceCount } from "./lib/studentWriting";
+import { draftValidationMessage, gentleMilestoneSentences, guideCopies, guideQuestions, helpStarterExamples, maximumExpansionSentences, openingDidiSpeech, stepForSentenceCount } from "./lib/studentWriting";
 import "./styles.css";
 
 const LIP_FRAME_INTERVAL_MS = 160;
@@ -242,6 +242,10 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
       return;
     }
 
+    if (sentences.length >= maximumExpansionSentences) {
+      return;
+    }
+
     const nextSentences = [...sentences, draft.trim()];
     helpRequestId.current += 1;
     setSentences(nextSentences);
@@ -249,12 +253,20 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
     setHelpView({ kind: "idle" });
     moveDidiToSide();
 
-    if (nextSentences.length === 5) {
+    // 열린 확장: 특정 문장 수에서 강제로 끝내지 않는다. 상한에 닿으면 자연스레 마무리로 넘긴다.
+    if (nextSentences.length >= maximumExpansionSentences) {
       setCompleted(true);
       return;
     }
 
     setFocusDraft(true);
+  }
+
+  function handleFinish(): void {
+    if (sentences.length === 0) {
+      return;
+    }
+    setCompleted(true);
   }
 
   function handleSaveEdit(index: number, value: string): void {
@@ -392,13 +404,27 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
     return <CompletionExperience nickname={nickname} sentences={sentences} onSaveEdit={handleSaveEdit} />;
   }
 
+  const seedSentence = sentences[0];
+  const expansionCount = sentences.length;
+  const reachedMilestone = expansionCount >= gentleMilestoneSentences;
+
   return (
     <main className="student-shell">
-      <section className="student-card" aria-label="다섯 문장 활동">
-        <p className="eyebrow">{nickname} · 길찾기 탐험 · {step} / 5</p>
+      <section className="student-card" aria-label="한 문장 넓히기 활동">
+        <p className="eyebrow">
+          {nickname} · 생각 넓히기 ·{" "}
+          {expansionCount === 0 ? "첫 문장" : `지금까지 ${expansionCount}문장`}
+        </p>
         <PolicyLinks />
         <h1>여기에 어떻게 오셨어요?</h1>
         <p className="guide-copy">{guideCopy}</p>
+        {seedSentence && expansionCount >= 2 ? (
+          <p className="seed-compare">
+            <span className="seed-compare__label">처음 생각</span>
+            <span className="seed-compare__text">{seedSentence}</span>
+            <span className="seed-compare__grow">→ 지금 {expansionCount}문장으로 자랐어요</span>
+          </p>
+        ) : null}
         {showGuideBubble ? (
           <div className="guide-bubble">
             <strong>{helpActive ? "디디의 도움 질문" : "디디의 질문"}</strong>
@@ -438,9 +464,14 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
               {helpButtonLabel(helpView)}
             </button>
             <button type="button" className="next-button" disabled={draftMessage !== null} onClick={handleSaveSentence}>
-              문장 저장
+              한 문장 더하기
             </button>
           </div>
+          {expansionCount >= 2 ? (
+            <button type="button" className="finish-button" onClick={handleFinish}>
+              {reachedMilestone ? "이 정도면 훌륭해요 · 여기까지 할래요" : "여기까지 할래요"}
+            </button>
+          ) : null}
         </div>
       </section>
     </main>

@@ -237,13 +237,13 @@ describe("학생 활동 시작 화면", () => {
     renderActivity();
 
     fireEvent.change(screen.getByLabelText("1번째 문장"), { target: { value: "버스를 타고 왔어요." } });
-    fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "한 문장 더하기" }));
 
     expect(screen.getByRole("button", { name: /^지금까지 쓴 문장 1개/ })).toHaveTextContent("버스를 타고 왔어요.");
     expect(screen.queryByTestId("sentence-card-1")).not.toBeInTheDocument();
     expect(screen.getByLabelText("2번째 문장")).toHaveValue("");
     expect(screen.queryByLabelText("1번째 문장")).not.toBeInTheDocument();
-    expect(screen.getByText(/길찾기 탐험 · 2 \/ 5/)).toBeInTheDocument();
+    expect(screen.getByText(/지금까지 1문장/)).toBeInTheDocument();
     expect(document.activeElement).toHaveAccessibleName("2번째 문장");
 
     act(() => {
@@ -292,7 +292,7 @@ describe("학생 활동 시작 화면", () => {
     fireEvent.change(screen.getByLabelText("1번째 문장"), { target: { value: "010-1234-5678" } });
 
     expect(screen.getByText(/개인정보로 보이는 내용은 빼고 적어 주세요/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "문장 저장" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "한 문장 더하기" })).toBeDisabled();
     act(() => {
       vi.advanceTimersByTime(400);
     });
@@ -306,7 +306,7 @@ describe("학생 활동 시작 화면", () => {
     fireEvent.change(screen.getByLabelText("1번째 문장"), { target: { value: `${"가".repeat(280)}.` } });
 
     expect(screen.getByText("문장은 280자 안으로 적어 주세요.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "문장 저장" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "한 문장 더하기" })).toBeDisabled();
   });
 
   it("도움 요청 중에는 분석 안내를 먼저 보여 주고 도움 버튼을 잠근다", async () => {
@@ -410,7 +410,7 @@ describe("학생 활동 시작 화면", () => {
     await waitForSessionConnection();
 
     fireEvent.change(screen.getByLabelText("1번째 문장"), { target: { value: "버스를 타고 왔어요." } });
-    fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "한 문장 더하기" }));
     fireEvent.change(screen.getByLabelText("2번째 문장"), { target: { value: "창밖을 봤어요." } });
     fireEvent.click(screen.getByRole("button", { name: "도움!" }));
 
@@ -428,7 +428,7 @@ describe("학생 활동 시작 화면", () => {
     await waitForSessionConnection();
     fireEvent.change(screen.getByLabelText("1번째 문장"), { target: { value: "버스를 타고 왔어요." } });
     fireEvent.click(screen.getByRole("button", { name: "도움!" }));
-    fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "한 문장 더하기" }));
     fireEvent.change(screen.getByLabelText("2번째 문장"), { target: { value: "창밖에 비가 왔어요." } });
     fireEvent.click(screen.getByRole("button", { name: "도움!" }));
 
@@ -480,7 +480,7 @@ describe("학생 활동 시작 화면", () => {
     renderActivity();
     await waitForSessionConnection();
     fireEvent.change(screen.getByLabelText("1번째 문장"), { target: { value: "버스를 타고 왔어요." } });
-    fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "한 문장 더하기" }));
     fireEvent.change(screen.getByLabelText("2번째 문장"), { target: { value: "창밖에 비가 왔어요." } });
     fireEvent.click(screen.getByRole("button", { name: "도움!" }));
     fireEvent.click(screen.getByRole("button", { name: /^지금까지 쓴 문장 1개/ }));
@@ -523,7 +523,7 @@ describe("학생 활동 시작 화면", () => {
       };
       renderActivity();
       fireEvent.change(screen.getByLabelText("1번째 문장"), { target: { value: "버스를 타고 왔어요." } });
-      fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+      fireEvent.click(screen.getByRole("button", { name: "한 문장 더하기" }));
       fireEvent.change(screen.getByLabelText("2번째 문장"), { target: { value: "창밖에 비가 왔어요." } });
       fireEvent.click(screen.getByRole("button", { name: /^지금까지 쓴 문장 1개/ }));
       fireEvent.click(screen.getByRole("button", { name: "1번째 문장 수정" }));
@@ -531,7 +531,7 @@ describe("학생 활동 시작 화면", () => {
       fireEvent.click(screen.getByRole("button", { name: "수정 저장" }));
 
       expect(screen.getByLabelText("2번째 문장")).toHaveValue("창밖에 비가 왔어요.");
-      expect(screen.getByText(/길찾기 탐험 · 2 \/ 5/)).toBeInTheDocument();
+      expect(screen.getByText(/지금까지 1문장/)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /^지금까지 쓴 문장 1개/ })).toHaveTextContent("지하철을 타고 왔어요.");
       expect(document.activeElement).toHaveAccessibleName("2번째 문장");
     } finally {
@@ -551,10 +551,12 @@ describe("학생 활동 시작 화면", () => {
 
     sentences.forEach((sentence, index) => {
       fireEvent.change(screen.getByLabelText(`${index + 1}번째 문장`), { target: { value: sentence } });
-      fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+      fireEvent.click(screen.getByRole("button", { name: "한 문장 더하기" }));
     });
 
-    expect(screen.getByRole("heading", { name: "다섯 문장이 완성됐어요" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /여기까지 할래요/ }));
+
+    expect(screen.getByRole("heading", { name: "한 문장이 이렇게 자랐어요" })).toBeInTheDocument();
     expect(screen.getByTestId("complete-paragraph")).toHaveTextContent(sentences.join(" "));
     expect(screen.getByTestId("didi-gesture")).toHaveAttribute("data-gesture", "complete");
   });
@@ -572,10 +574,12 @@ describe("학생 활동 시작 화면", () => {
 
     sentences.forEach((sentence, index) => {
       fireEvent.change(screen.getByLabelText(`${index + 1}번째 문장`), { target: { value: sentence } });
-      fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+      fireEvent.click(screen.getByRole("button", { name: "한 문장 더하기" }));
     });
 
-    expect(screen.getByText("이미 여러분은 훌륭한 글을 쓸 준비가 되었어요.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /여기까지 할래요/ }));
+
+    expect(screen.getByText(/한 줄이었는데/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "디디의 마법 펼치기" })).toBeInTheDocument();
     expect(screen.queryByTestId("magic-paragraph")).not.toBeInTheDocument();
 
@@ -603,8 +607,10 @@ describe("학생 활동 시작 화면", () => {
 
     sentences.forEach((sentence, index) => {
       fireEvent.change(screen.getByLabelText(`${index + 1}번째 문장`), { target: { value: sentence } });
-      fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+      fireEvent.click(screen.getByRole("button", { name: "한 문장 더하기" }));
     });
+
+    fireEvent.click(screen.getByRole("button", { name: /여기까지 할래요/ }));
 
     fireEvent.click(screen.getByRole("button", { name: "디디의 마법 펼치기" }));
 
@@ -629,8 +635,10 @@ describe("학생 활동 시작 화면", () => {
 
     sentences.forEach((sentence, index) => {
       fireEvent.change(screen.getByLabelText(`${index + 1}번째 문장`), { target: { value: sentence } });
-      fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+      fireEvent.click(screen.getByRole("button", { name: "한 문장 더하기" }));
     });
+
+    fireEvent.click(screen.getByRole("button", { name: /여기까지 할래요/ }));
 
     fireEvent.click(screen.getByRole("button", { name: "디디의 마법 펼치기" }));
     act(() => {
@@ -651,9 +659,10 @@ describe("학생 활동 시작 화면", () => {
     try {
       sentences.forEach((sentence, index) => {
         fireEvent.change(screen.getByLabelText(`${index + 1}번째 문장`), { target: { value: sentence } });
-        fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+        fireEvent.click(screen.getByRole("button", { name: "한 문장 더하기" }));
       });
 
+      fireEvent.click(screen.getByRole("button", { name: /여기까지 할래요/ }));
       fireEvent.click(screen.getByRole("button", { name: "디디의 마법 펼치기" }));
 
       expect(screen.getByTestId("magic-paragraph")).toBeInTheDocument();
@@ -670,16 +679,17 @@ describe("학생 활동 시작 화면", () => {
     const sentences = ["버스를 타고 왔어요.", "창밖의 비를 봤어요.", "친구를 만났어요.", "함께 걸었어요."] as const;
     sentences.forEach((sentence, index) => {
       fireEvent.change(screen.getByLabelText(`${index + 1}번째 문장`), { target: { value: sentence } });
-      fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+      fireEvent.click(screen.getByRole("button", { name: "한 문장 더하기" }));
     });
 
-    // When: 첫 번째 카드를 고치고 마지막 문장을 저장하면
+    // When: (작성 화면에서) 첫 번째 카드를 고치고, 마지막 문장을 더한 뒤 마무리하면
     fireEvent.click(screen.getByRole("button", { name: /^지금까지 쓴 문장 4개/ }));
     fireEvent.click(screen.getByRole("button", { name: "1번째 문장 수정" }));
     fireEvent.change(screen.getByLabelText("1번째 문장 수정 내용"), { target: { value: "지하철을 타고 왔어요." } });
     fireEvent.click(screen.getByRole("button", { name: "수정 저장" }));
     fireEvent.change(screen.getByLabelText("5번째 문장"), { target: { value: "오늘 길이 기억나요." } });
-    fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "한 문장 더하기" }));
+    fireEvent.click(screen.getByRole("button", { name: /여기까지 할래요/ }));
 
     // Then: 수정한 문장으로 완성 문단을 만든다
     expect(screen.getByTestId("complete-paragraph")).toHaveTextContent(
@@ -692,8 +702,10 @@ describe("학생 활동 시작 화면", () => {
     const sentences = ["버스를 타고 왔어요.", "창밖의 비를 봤어요.", "친구를 만났어요.", "함께 걸었어요.", "오늘 길이 기억나요."] as const;
     sentences.forEach((sentence, index) => {
       fireEvent.change(screen.getByLabelText(`${index + 1}번째 문장`), { target: { value: sentence } });
-      fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+      fireEvent.click(screen.getByRole("button", { name: "한 문장 더하기" }));
     });
+
+    fireEvent.click(screen.getByRole("button", { name: /여기까지 할래요/ }));
 
     fireEvent.click(screen.getByRole("button", { name: "1번째 문장 수정" }));
     fireEvent.change(screen.getByLabelText("1번째 문장 수정 내용"), { target: { value: "지하철을 타고 왔어요." } });
@@ -712,7 +724,7 @@ describe("학생 활동 시작 화면", () => {
       await Promise.resolve();
     });
     fireEvent.change(screen.getByLabelText("1번째 문장"), { target: { value: "버스를 타고 왔어요." } });
-    fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "한 문장 더하기" }));
     fireEvent.click(screen.getByRole("button", { name: "도움!" }));
 
     await act(async () => {

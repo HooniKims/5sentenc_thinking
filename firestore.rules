@@ -31,12 +31,19 @@ service cloud.firestore {
 
     function sentencesAreSafe(sentences) {
       return sentences is list
-        && sentences.size() <= 5
+        && sentences.size() <= 12
         && (sentences.size() < 1 || safeStudentText(sentences[0]))
         && (sentences.size() < 2 || safeStudentText(sentences[1]))
         && (sentences.size() < 3 || safeStudentText(sentences[2]))
         && (sentences.size() < 4 || safeStudentText(sentences[3]))
-        && (sentences.size() < 5 || safeStudentText(sentences[4]));
+        && (sentences.size() < 5 || safeStudentText(sentences[4]))
+        && (sentences.size() < 6 || safeStudentText(sentences[5]))
+        && (sentences.size() < 7 || safeStudentText(sentences[6]))
+        && (sentences.size() < 8 || safeStudentText(sentences[7]))
+        && (sentences.size() < 9 || safeStudentText(sentences[8]))
+        && (sentences.size() < 10 || safeStudentText(sentences[9]))
+        && (sentences.size() < 11 || safeStudentText(sentences[10]))
+        && (sentences.size() < 12 || safeStudentText(sentences[11]));
     }
 
     function participantDataIsValid(participantId) {

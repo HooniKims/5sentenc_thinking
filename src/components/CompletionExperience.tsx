@@ -104,10 +104,12 @@ export function CompletionExperience({ nickname, sentences, onSaveEdit }: Comple
 
   return (
     <main className="student-shell">
-      <section ref={completionCard} className="student-card completion-card" aria-label="다섯 문장 활동 완료">
-        <p className="eyebrow">{nickname} · 길찾기 탐험 · 5 / 5</p>
-        <h1>다섯 문장이 완성됐어요</h1>
-        <p className="completion-praise">이미 여러분은 훌륭한 글을 쓸 준비가 되었어요.</p>
+      <section ref={completionCard} className="student-card completion-card" aria-label="한 문장 넓히기 완료">
+        <p className="eyebrow">{nickname} · 생각 넓히기 · {sentences.length}문장</p>
+        <h1>한 문장이 이렇게 자랐어요</h1>
+        <p className="completion-praise">
+          처음엔 “{sentences[0] ?? ""}” 한 줄이었는데, {sentences.length}문장이 되었어요.
+        </p>
         <div className="guide-bubble completion-bubble">
           <strong>디디의 축하</strong>
           <span aria-live={castingMagic ? "polite" : undefined}>{didiMessage}</span>

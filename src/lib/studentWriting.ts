@@ -1,41 +1,52 @@
 import { isSingleSentence } from "./sentences";
 import { containsPersonalInformation } from "./helpGuidance";
 
+// 확장 모델: 씨앗 한 문장에서 출발해, 그 "같은 순간"을 다시 보며 알아챈 것을 한 문장씩 더한다.
+// 중1 사용성: 추상("무엇을 놓쳤나") 금지, 구체·감각 질문 하나만.
+// 문장 시작 예시("창밖으로 ___")는 항상 보여주지 않는다 — 먼저 스스로 써 보게 하고,
+// 막혀서 '도움'을 누르면 그때 디디가 예시를 건넨다(먼저 생각하기 철학).
 export const guideQuestions = [
-  "여기에 어떻게 오셨어요? 먼저 떠오르는 장면을 한 문장으로 써 볼까요?",
-  "방금 쓴 문장과 다른 장면 하나를 더해 볼까요?",
-  "소리나 느낌을 담은 새 문장을 하나 더 만들어 볼까요?",
-  "그 길에서 만난 사람이나 내 행동을 한 문장으로 적어 볼까요?",
-  "처음과 달라진 생각을 담은 마지막 문장을 써 볼까요?"
+  "오늘 여기까지 어떻게 왔는지, 떠오르는 대로 한 문장만 써 볼까요?",
+  "그 순간으로 다시 가 볼게요. 그때 눈앞에 뭐가 보였어요?",
+  "그 자리에서 무슨 소리가 들렸어요? 냄새나 바람은요?",
+  "그때 곁에 누가 있었어요? 그 사람은 뭘 하고 있었나요?",
+  "그 순간, 내 마음은 어땠어요?"
+] as const;
+
+// '도움' 버튼을 눌렀을 때만 디디가 건네는 문장 시작 예시(차원별). 항상 노출하지 않는다.
+export const helpStarterExamples = [
+  "이렇게 시작해도 좋아요: “나는 ___를 타고 왔어요.”",
+  "이렇게 시작해도 좋아요: “창밖으로 ___이 보였어요.”",
+  "이렇게 시작해도 좋아요: “___ 소리가 들렸어요.”",
+  "이렇게 시작해도 좋아요: “옆에는 ___가 있었어요.”",
+  "이렇게 시작해도 좋아요: “나는 조금 ___한 마음이었어요.”"
 ] as const;
 
 export const openingDidiSpeech = "너무 어렵게 생각하지 마세요. 이곳까지 어떻게 왔는지 간단하게 써도 좋아요.";
 
 export const guideCopies = [
-  "정답보다 내 생각이 먼저예요. 가장 먼저 떠오른 장면을 한 문장으로 적어 보세요.",
-  "앞 문장을 반복하지 않고, 새로 발견한 장면을 두 번째 문장으로 적어 보세요.",
-  "생각은 더 자세히 볼수록 자라요. 소리나 느낌을 새 문장에 담아 보세요.",
-  "사람, 표정, 행동처럼 처음에 놓친 것을 한 문장으로 적어 보세요.",
-  "처음 생각과 달라진 점을 담아 마지막 문장을 완성해 보세요."
+  "정답보다 내 생각이 먼저예요. 가장 먼저 떠오른 대로 한 문장만 적어 보세요.",
+  "그 순간을 다시 떠올려, 눈에 보였던 것을 한 문장 더해 보세요.",
+  "이번엔 소리나 냄새, 바람처럼 그때 느낀 것을 한 문장 더해 보세요.",
+  "그 자리에 있던 사람이나 그 사람의 모습을 한 문장 더해 보세요.",
+  "그때 내 마음이 어땠는지 한 문장 더해 보세요. 떠오르면 계속 이어가도 좋아요."
 ] as const;
 
 export type ActivityStep = 1 | 2 | 3 | 4 | 5;
 
 export const maximumStudentSentenceLength = 280;
 
+// 열린 확장: 문장은 이만큼까지 계속 이어갈 수 있다(무제한 아님 — 저장·안전 상한).
+export const maximumExpansionSentences = 12;
+// 이만큼 알아채면 "충분히 훌륭"하다고 인정하되, 강제로 끝내지 않는다.
+export const gentleMilestoneSentences = 4;
+
+// 씨앗(1) 이후에는 차원 질문(2~5: 본 것·소리·사람·마음)을 순환한다. step은 질문/예시 선택용으로 1~5 유지.
 export function stepForSentenceCount(sentenceCount: number): ActivityStep {
-  switch (sentenceCount) {
-    case 0:
-      return 1;
-    case 1:
-      return 2;
-    case 2:
-      return 3;
-    case 3:
-      return 4;
-    default:
-      return 5;
+  if (sentenceCount <= 0) {
+    return 1;
   }
+  return (((sentenceCount - 1) % 4) + 2) as ActivityStep;
 }
 
 export function draftValidationMessage(draft: string): string | null {

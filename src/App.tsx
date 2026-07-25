@@ -421,8 +421,7 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
         {seedSentence && expansionCount >= 2 ? (
           <p className="seed-compare">
             <span className="seed-compare__label">처음 생각</span>
-            <span className="seed-compare__text">{seedSentence}</span>
-            <span className="seed-compare__grow">→ 지금 {expansionCount}문장으로 자랐어요</span>
+            <span className="seed-compare__text">“{seedSentence}” → 지금 {expansionCount}문장으로 자랐어요</span>
           </p>
         ) : null}
         {showGuideBubble ? (

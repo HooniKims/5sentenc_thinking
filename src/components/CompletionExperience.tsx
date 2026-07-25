@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { LazyRobot3D } from "./LazyRobot3D";
 import { SentenceList } from "./SentenceList";
+import { requestRefinedParagraph } from "../lib/refineClient";
+
+type RefineState =
+  | { readonly kind: "idle" }
+  | { readonly kind: "loading" }
+  | { readonly kind: "done"; readonly paragraph: string }
+  | { readonly kind: "error" };
 
 const MAGIC_REVEAL_MS = 900;
 const connectors = ["", "그러다", "그때", "이어서", "마지막으로"] as const;
@@ -54,6 +61,8 @@ function refinementQuestions(sentences: readonly string[]): readonly string[] {
 export function CompletionExperience({ nickname, sentences, onSaveEdit }: CompletionExperienceProps): React.JSX.Element {
   const [magicState, setMagicState] = useState<MagicState>("ready");
   const [magicRun, setMagicRun] = useState(0);
+  const [refineState, setRefineState] = useState<RefineState>({ kind: "idle" });
+  const refineRequestId = useRef(0);
   const completionCard = useRef<HTMLElement>(null);
   const magicResult = useRef<HTMLElement>(null);
   const connectedParagraph = magicParagraph(sentences);
@@ -102,6 +111,27 @@ export function CompletionExperience({ nickname, sentences, onSaveEdit }: Comple
     setMagicState("casting");
   }
 
+  function refineWithAi(): void {
+    if (refineState.kind === "loading") {
+      return;
+    }
+
+    const requestId = refineRequestId.current + 1;
+    refineRequestId.current = requestId;
+    setRefineState({ kind: "loading" });
+    void requestRefinedParagraph(sentences)
+      .then((paragraph) => {
+        if (refineRequestId.current === requestId) {
+          setRefineState({ kind: "done", paragraph });
+        }
+      })
+      .catch(() => {
+        if (refineRequestId.current === requestId) {
+          setRefineState({ kind: "error" });
+        }
+      });
+  }
+
   return (
     <main className="student-shell">
       <section ref={completionCard} className="student-card completion-card" aria-label="한 문장 넓히기 완료">
@@ -144,6 +174,29 @@ export function CompletionExperience({ nickname, sentences, onSaveEdit }: Comple
             <article className="magic-paragraph">
               <p data-testid="magic-paragraph">{connectedParagraph}</p>
             </article>
+            <div className="refine-block">
+              <button
+                type="button"
+                className="refine-button"
+                disabled={refineState.kind === "loading"}
+                onClick={refineWithAi}
+              >
+                {refineState.kind === "loading"
+                  ? "디디가 다듬는 중이에요…"
+                  : refineState.kind === "done"
+                    ? "AI로 다시 다듬어 보기"
+                    : "AI로 더 유려하게 다듬어 보기"}
+              </button>
+              {refineState.kind === "done" ? (
+                <article className="magic-paragraph magic-paragraph--refined">
+                  <p className="magic-result__note">AI가 뜻은 그대로 두고 표현만 다듬은 글이에요. 원문과 나란히 견줘 보세요.</p>
+                  <p data-testid="refined-paragraph">{refineState.paragraph}</p>
+                </article>
+              ) : null}
+              {refineState.kind === "error" ? (
+                <p className="magic-result__note" role="status">지금은 다듬기가 어려워요. 잠깐 뒤에 다시 눌러 주세요.</p>
+              ) : null}
+            </div>
             <section className="refinement-prompts" aria-labelledby="refinement-title">
               <h3 id="refinement-title">더 멋진 글로 다듬어 볼까요?</h3>
               <p>세 가지 중 하나를 골라, 원문에 내 말로 한마디를 더해 보세요.</p>

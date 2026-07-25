@@ -67,7 +67,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   vi.useRealTimers();
 });
 
@@ -176,6 +176,8 @@ describe("학생 활동 시작 화면", () => {
       vi.advanceTimersByTime(10_000);
     });
 
+    // 초안을 쓴 학생이 도움을 누르면 이어지는 질문(분석 흐름)을 연다. (빈 초안이면 예시가 나온다 — 아래 별도 테스트)
+    fireEvent.change(screen.getByLabelText("1번째 문장"), { target: { value: "버스를 타고 왔어요." } });
     fireEvent.click(screen.getByRole("button", { name: "도움!" }));
 
     expect(screen.getByText("디디가 문장 사이를 살펴보고 있어요.")).toBeInTheDocument();
@@ -255,6 +257,7 @@ describe("학생 활동 시작 화면", () => {
     renderActivity();
     await waitForSessionConnection();
 
+    fireEvent.change(screen.getByLabelText("1번째 문장"), { target: { value: "버스를 타고 왔어요." } });
     fireEvent.click(screen.getByRole("button", { name: "도움!" }));
 
     await act(async () => {
@@ -267,6 +270,18 @@ describe("학생 활동 시작 화면", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "다시 생각해 볼게요" }));
     expect(screen.queryByText("디디의 도움 질문")).not.toBeInTheDocument();
+  });
+
+  it("아직 아무것도 못 쓴 채 도움을 누르면 API 질문 대신 문장 시작 예시를 건넨다", async () => {
+    renderActivity();
+    await waitForSessionConnection();
+
+    // 초안이 빈 상태에서 도움 → 디디가 문장 시작 예시를 건네고, 외부 질문은 요청하지 않는다("먼저 생각하기").
+    fireEvent.click(screen.getByRole("button", { name: "도움!" }));
+
+    expect(screen.getByText(/이렇게 시작해도 좋아요/)).toBeInTheDocument();
+    expect(screen.queryByText("디디가 문장 사이를 살펴보고 있어요.")).not.toBeInTheDocument();
+    expect(help.requestGuidanceQuestion).not.toHaveBeenCalled();
   });
 
   it("입력칸 가까이 개인정보 안내를 보여 주고 해당 문장은 저장하지 않는다", () => {
@@ -300,6 +315,7 @@ describe("학생 활동 시작 화면", () => {
     help.requestGuidanceQuestion.mockReturnValueOnce(request.promise);
     renderActivity();
     await waitForSessionConnection();
+    fireEvent.change(screen.getByLabelText("1번째 문장"), { target: { value: "버스를 타고 왔어요." } });
 
     // When: 학생이 도움을 요청하면
     fireEvent.click(screen.getByRole("button", { name: "도움!" }));
@@ -346,6 +362,7 @@ describe("학생 활동 시작 화면", () => {
     help.requestGuidanceQuestion.mockReturnValueOnce(request.promise);
     renderActivity();
     await waitForSessionConnection();
+    fireEvent.change(screen.getByLabelText("1번째 문장"), { target: { value: "버스를 타고 왔어요." } });
     fireEvent.click(screen.getByRole("button", { name: "도움!" }));
 
     // When: 디디의 질문이 도착하면
@@ -365,6 +382,7 @@ describe("학생 활동 시작 화면", () => {
     help.requestGuidanceQuestion.mockReturnValueOnce(request.promise);
     renderActivity();
     await waitForSessionConnection();
+    fireEvent.change(screen.getByLabelText("1번째 문장"), { target: { value: "버스를 타고 왔어요." } });
     fireEvent.click(screen.getByRole("button", { name: "도움!" }));
 
     // Then: 실패 전에는 대체 질문을 앞서 보여 주지 않는다
@@ -393,6 +411,7 @@ describe("학생 활동 시작 화면", () => {
 
     fireEvent.change(screen.getByLabelText("1번째 문장"), { target: { value: "버스를 타고 왔어요." } });
     fireEvent.click(screen.getByRole("button", { name: "문장 저장" }));
+    fireEvent.change(screen.getByLabelText("2번째 문장"), { target: { value: "창밖을 봤어요." } });
     fireEvent.click(screen.getByRole("button", { name: "도움!" }));
 
     await waitFor(() => {

@@ -10,7 +10,7 @@ import { contextualHelpQuestion, createHelpGuidanceInput } from "./lib/helpGuida
 import { createNickname } from "./lib/nickname";
 import { isSingleSentence, replaceSentence } from "./lib/sentences";
 import { requestHelp } from "./lib/activity";
-import { draftValidationMessage, guideCopies, guideQuestions, openingDidiSpeech, stepForSentenceCount } from "./lib/studentWriting";
+import { draftValidationMessage, guideCopies, guideQuestions, helpStarterExamples, openingDidiSpeech, stepForSentenceCount } from "./lib/studentWriting";
 import "./styles.css";
 
 const LIP_FRAME_INTERVAL_MS = 160;
@@ -303,8 +303,23 @@ export function App({ sessionId = null }: AppProps): React.JSX.Element {
 
     const participantSentences = sentences;
     const requestId = helpRequestId.current + 1;
-    const variation = helpVariation.current;
     helpRequestId.current = requestId;
+
+    // 아직 이번 문장을 시작도 못 한 학생에겐 API 질문 대신 문장 시작 예시를 바로 건넨다.
+    // ("먼저 생각하기": 예시는 항상이 아니라 막혀서 도움을 눌렀을 때만.)
+    if (draft.trim().length === 0) {
+      if (didiPosition === "side") {
+        setGuideBubbleWaitingForDidi(false);
+      }
+      moveDidiToSide();
+      setHelpView({ kind: "ready", question: helpStarterExamples[step - 1] ?? helpStarterExamples[0] });
+      void createHelpRequest(sessionId, ownerUid, nickname, participantSentences, step).catch(() =>
+        setRecordingUnavailable(true)
+      );
+      return;
+    }
+
+    const variation = helpVariation.current;
     helpVariation.current += 1;
     setHelpView({ kind: "analyzing" });
     if (didiPosition === "side") {

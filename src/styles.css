@@ -30,7 +30,7 @@ button, textarea { font: inherit; }
 .guide-character--moving .guide-character-motion { animation: didi-run 210ms ease-in-out infinite alternate; }
 @keyframes didi-run { from { transform: rotate(-2.5deg); } to { transform: rotate(2.5deg); } }
 .student-card h1, .guide-copy, .guide-bubble, .sentence-field, .sentence-summary { word-break: keep-all; overflow-wrap: break-word; }
-.writing-dock { position: absolute; z-index: 4; right: 24px; bottom: 24px; left: 24px; display: grid; gap: 12px; min-width: 0; }
+.writing-dock { position: absolute; z-index: 4; right: 24px; bottom: 24px; left: 24px; display: grid; gap: 10px; min-width: 0; }
 .sentence-field { display: grid; gap: 8px; min-width: 0; padding: 12px; border: 1px solid #ffffff66; border-radius: 18px; background: #140a294d; }
 .sentence-field span { font-size: .82rem; font-weight: 800; }
 .sentence-field textarea { height: 96px; min-height: 96px; max-height: 96px; resize: none; overflow-x: hidden; overflow-y: auto; border: 0; outline: 0; color: #fff; background: transparent; font-weight: 800; line-height: 1.5; -webkit-text-stroke: .65px #13091f; paint-order: stroke fill; }
@@ -43,9 +43,6 @@ button, textarea { font: inherit; }
 .next-button { display: grid; flex: 1; place-content: center; gap: 1px; color: #fff; background: var(--pink); line-height: 1.08; }
 .finish-button { width: 100%; min-height: 38px; border: 1px solid var(--lime); border-radius: 999px; padding: 0 14px; color: var(--vanilla); background: #140a2966; font-weight: 800; font-size: .84rem; }
 .finish-button:focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; }
-.seed-compare { margin: 6px 0 0; padding: 6px 10px; border-left: 3px solid var(--lime); border-radius: 8px; background: #fdf8ff14; font-size: .78rem; line-height: 1.4; }
-.seed-compare__label { display: inline; margin-right: 6px; color: var(--lime); font-weight: 800; }
-.seed-compare__text { color: #efe9fb; font-weight: 700; }
 .next-button span { display: block; white-space: nowrap; }
 .student-actions button:disabled, .sentence-card button:disabled { opacity: .56; }
 .student-card button:focus-visible, .sentence-field textarea:focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; }

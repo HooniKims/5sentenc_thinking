@@ -243,7 +243,7 @@ describe("학생 활동 시작 화면", () => {
     expect(screen.queryByTestId("sentence-card-1")).not.toBeInTheDocument();
     expect(screen.getByLabelText("2번째 문장")).toHaveValue("");
     expect(screen.queryByLabelText("1번째 문장")).not.toBeInTheDocument();
-    expect(screen.getByText(/지금까지 1문장/)).toBeInTheDocument();
+    expect(screen.getByText(/1 \/ 5 문장/)).toBeInTheDocument();
     expect(document.activeElement).toHaveAccessibleName("2번째 문장");
 
     act(() => {
@@ -531,7 +531,7 @@ describe("학생 활동 시작 화면", () => {
       fireEvent.click(screen.getByRole("button", { name: "수정 저장" }));
 
       expect(screen.getByLabelText("2번째 문장")).toHaveValue("창밖에 비가 왔어요.");
-      expect(screen.getByText(/지금까지 1문장/)).toBeInTheDocument();
+      expect(screen.getByText(/1 \/ 5 문장/)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /^지금까지 쓴 문장 1개/ })).toHaveTextContent("지하철을 타고 왔어요.");
       expect(document.activeElement).toHaveAccessibleName("2번째 문장");
     } finally {

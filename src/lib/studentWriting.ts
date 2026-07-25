@@ -36,10 +36,11 @@ export type ActivityStep = 1 | 2 | 3 | 4 | 5;
 
 export const maximumStudentSentenceLength = 280;
 
-// 열린 확장: 문장은 이만큼까지 계속 이어갈 수 있다(무제한 아님 — 저장·안전 상한).
+// 기본 목표는 5문장. 채우면 마무리할 수 있고, 원하면 이어서 더 넓힐 수 있다(안전 상한 12).
+export const targetSentences = 5;
 export const maximumExpansionSentences = 12;
-// 이만큼 알아채면 "충분히 훌륭"하다고 인정하되, 강제로 끝내지 않는다.
-export const gentleMilestoneSentences = 4;
+// 5문장을 채우면 "충분히 훌륭"으로 인정하고 마무리 버튼을 연다(강제 종료는 아님).
+export const gentleMilestoneSentences = 5;
 
 // 씨앗(1) 이후에는 차원 질문(2~5: 본 것·소리·사람·마음)을 순환한다. step은 질문/예시 선택용으로 1~5 유지.
 export function stepForSentenceCount(sentenceCount: number): ActivityStep {
